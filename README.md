@@ -5,4 +5,4 @@ Daily trivia & puzzle games 🎮
 ---
 
 ### 🎮 Play Daily Games:
-👉 [Click here to Play Games (Reddit Profile)](https://www.reddit.com/user/Key_And_Gem/)
+👉 <a href="https://www.reddit.com/user/Key_And_Gem/" target="_blank" rel="noopener noreferrer">Click here to Play Games (Reddit Profile)</a>
