@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f6efe6">
+<meta name="theme-color" content="#A26F4E">
 <title>Question of the Day</title>
 <style>
 :root {
@@ -17,6 +17,7 @@
   --btn-ink: #3b2416;
   --gold: #c9a227;
   --ship: clamp(100px, 26vmin, 260px);
+  --head: clamp(54px, 9vmin, 68px);
   --line: rgba(255, 255, 255, 0.35);
   --shade: rgba(40, 24, 14, 0.6);
   color-scheme: light;
@@ -37,12 +38,44 @@ body {
   font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 16px 14px calc(var(--ship) * 0.75 + 28px);
+  padding: calc(var(--head) + 16px) 14px calc(var(--ship) * 0.75 + 28px);
 }
 main {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
+}
+.brand {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  height: var(--head);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--card);
+  border-bottom: 4px solid var(--gold);
+  box-shadow: 0 6px 18px rgba(46, 28, 16, 0.3);
+}
+.brand-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(22px, 5.4vmin, 30px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff6ee;
+  text-shadow: 0 2px 4px rgba(46, 28, 16, 0.35);
+}
+.brand-name .amp {
+  color: #f3d9b1;
+  font-style: italic;
+  padding: 0 0.1em;
+}
+.brand-icons {
+  font-size: clamp(22px, 5.4vmin, 30px);
+  line-height: 1;
 }
 .feed {
   display: flex;
@@ -60,8 +93,8 @@ main {
 
 .card[hidden] { display: none; }
 .ad-box {
-  background: #fff6ee;
-  color: #2e1c10;
+  background: var(--card);
+  color: #fff6ee;
   border-radius: 10px;
   padding: 8px;
   overflow: hidden;
@@ -323,12 +356,16 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 }
 @media (orientation: landscape) {
   body {
-    padding: 10px calc(var(--ship) + 18px);
+    padding: calc(var(--head) + 10px) calc(var(--ship) + 18px) 10px;
   }
 }
 </style>
 </head>
 <body>
+<header class="brand">
+  <span class="brand-name">Key <span class="amp">&amp;</span> Gem</span>
+  <span class="brand-icons" aria-hidden="true">🗝️💎</span>
+</header>
 <main>
   <div class="feed" id="feed"></div>
   <div class="sentinel" id="sentinel"></div>
@@ -471,6 +508,16 @@ var ITEMS = [
     return card;
   }
 
+  function tintAd(box) {
+    var nodes = box.querySelectorAll("*");
+    for (var i = 0; i < nodes.length; i++) {
+      var m = getComputedStyle(nodes[i]).backgroundColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+      if (m && (m[4] === undefined || parseFloat(m[4]) > 0) && +m[1] >= 230 && +m[2] >= 230 && +m[3] >= 230) {
+        nodes[i].style.backgroundColor = "transparent";
+      }
+    }
+  }
+
   function buildAdCard() {
     var card = make("article", "card ad");
     var box = make("div", "ad-box");
@@ -487,9 +534,9 @@ var ITEMS = [
     card.hidden = true;
     if ("MutationObserver" in window) {
       var watcher = new MutationObserver(function () {
-        if (box.textContent.trim() !== "" || box.querySelector("img, iframe, a")) {
+        tintAd(box);
+        if (card.hidden && (box.textContent.trim() !== "" || box.querySelector("img, iframe, a"))) {
           card.hidden = false;
-          watcher.disconnect();
         }
       });
       watcher.observe(box, { childList: true, subtree: true });
@@ -697,12 +744,11 @@ var ITEMS = [
 <script>
 (function () {
   var base = document.getElementById("pirate");
-  var spots = ["top", "left", "bottom", "right"];
+  var spots = ["left", "bottom", "right"];
   var moves = {
-    top: ["left", "right"],
-    left: ["top", "bottom"],
+    left: ["bottom"],
     bottom: ["left", "right"],
-    right: ["top", "bottom"]
+    right: ["bottom"]
   };
   var taken = {};
   var pirates = [];
@@ -729,10 +775,6 @@ var ITEMS = [
     if (side === "bottom") {
       left = w / 2 - size / 2;
       top = h - peek + out;
-    } else if (side === "top") {
-      left = w / 2 - size / 2;
-      top = -(size - peek) - out;
-      rot = 180;
     } else if (side === "left") {
       left = -(size - peek) - out;
       top = h / 2 - size / 2;
