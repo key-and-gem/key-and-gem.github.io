@@ -463,8 +463,8 @@ var ITEMS = [
 
   function buildCard(item) {
     var card = make("article", "card");
-    var answer = make("div", "answer locked", item.answer.replace(/\S/g, "x"));
-    var btn = make("button", "unlock", "Watch ad - Unlock Answer");
+    var answer = make("div", "answer open", item.answer);
+    var btn = make("button", "unlock", "Support Us ❤️ Watch Ad");
     answer.setAttribute("aria-live", "polite");
     btn.type = "button";
     btn.addEventListener("click", function () {
@@ -612,10 +612,9 @@ var ITEMS = [
     active = false;
     stopTimer();
     render();
-    cur.answerEl.textContent = cur.answer;
-    cur.answerEl.classList.remove("locked");
-    cur.answerEl.classList.add("open");
-    cur.btn.style.display = "none";
+    cur.btn.textContent = "Thank You For Supporting Us ❤️";
+    cur.btn.disabled = true;
+    cur.btn.style.opacity = "1";
     overlay.classList.remove("show");
   }
 
