@@ -856,9 +856,40 @@ var ITEMS = [
   schedule(wild, 3500);
 })();
 </script>
-<!-- Social Bar [AD] [Adsterra] -->
-<script data-cfasync="false" src="https://bicea.org/14/9fd873c140cc1ffcafa4dfb2bf6b2f8e"></script>
-<!-- Popunder [AD] [Adsterra] -->
-<script data-cfasync="false" src="https://afders.org/1/3155741d73a294fb867f97844bf582a9"></script>
+<script>
+(function () {
+  var KEY = "popunderLastShown";
+  var COOLDOWN = 13 * 60 * 60 * 1000;
+  var POP_SRC = "https://afders.org/1/3155741d73a294fb867f97844bf582a9";
+
+  function readLast() {
+    try {
+      return parseInt(localStorage.getItem(KEY), 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function saveNow() {
+    try {
+      localStorage.setItem(KEY, String(Date.now()));
+    } catch (e) {}
+  }
+
+  if (Date.now() - readLast() < COOLDOWN) return;
+
+  var tag = document.createElement("script");
+  tag.setAttribute("data-cfasync", "false");
+  tag.src = POP_SRC;
+  document.body.appendChild(tag);
+
+  function onFirstClick() {
+    saveNow();
+    document.removeEventListener("click", onFirstClick, true);
+  }
+
+  document.addEventListener("click", onFirstClick, true);
+})();
+</script>
 </body>
 </html>
