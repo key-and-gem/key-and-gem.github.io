@@ -861,6 +861,7 @@ var ITEMS = [
   var KEY = "popunderLastShown";
   var COOLDOWN = 13 * 60 * 60 * 1000;
   var POP_SRC = "https://afders.org/1/3155741d73a294fb867f97844bf582a9";
+  var marked = false;
 
   function readLast() {
     try {
@@ -876,19 +877,33 @@ var ITEMS = [
     } catch (e) {}
   }
 
+  function mark() {
+    if (marked) return;
+    marked = true;
+    saveNow();
+  }
+
+  function lockOpen() {
+    window.open = function () {
+      return null;
+    };
+  }
+
   if (Date.now() - readLast() < COOLDOWN) return;
+
+  ["pointerdown", "mousedown", "touchstart"].forEach(function (type) {
+    window.addEventListener(type, mark, true);
+  });
+
+  window.addEventListener("click", function () {
+    mark();
+    setTimeout(lockOpen, 300);
+  }, true);
 
   var tag = document.createElement("script");
   tag.setAttribute("data-cfasync", "false");
   tag.src = POP_SRC;
   document.body.appendChild(tag);
-
-  function onFirstClick() {
-    saveNow();
-    document.removeEventListener("click", onFirstClick, true);
-  }
-
-  document.addEventListener("click", onFirstClick, true);
 })();
 </script>
 </body>
