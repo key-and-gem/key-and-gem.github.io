@@ -159,6 +159,11 @@ main {
   overflow-wrap: anywhere;
 }
 .answer.locked {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
   filter: blur(7px);
   user-select: none;
   -webkit-user-select: none;
@@ -241,8 +246,12 @@ var NATIVE_AD = {
 
 var ITEMS = [
   {
-    question: "Name a Fruit 🍏 without the letter “A” on it?",
+    question: "Name a Fruit 🍌 without the letter “A” on it?",
     answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry"
+  },
+  {
+    question: "Name a country 🌍 whose name has exactly 5 letters.",
+    answer: "China, India, Japan, Italy, Spain, Egypt, Syria, Haiti, Chile, Libya, Kenya, Yemen, Sudan, Qatar, Nepal, Ghana, Malta, Niger, Congo, Samoa, Tonga, Benin, Gabon, Palau, Nauru"
   }
 ];
 
