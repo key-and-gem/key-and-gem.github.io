@@ -191,6 +191,10 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
   justify-content: center;
   gap: 10px;
 }
+.unlock.sponsor {
+  cursor: default;
+  pointer-events: none;
+}
 .unlock svg {
   width: 22px;
   height: 22px;
@@ -239,6 +243,10 @@ var ITEMS = [
   {
     question: "Name a Fruit 🍏 without the letter “A” on it?",
     answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry"
+  },
+  {
+    question: "Test Question",
+    answer: "Test Answer"
   }
 ];
 
@@ -277,12 +285,18 @@ var ITEMS = [
     return node;
   }
 
-  function buildCard(item) {
-    var card = make("article", "card qa");
+  function makeFoot(btn) {
     var foot = make("div", "card-foot");
     var ship = make("img", "card-ship");
     ship.alt = "";
     ship.src = SHIP_SRC;
+    foot.appendChild(ship);
+    foot.appendChild(btn);
+    return foot;
+  }
+
+  function buildCard(item) {
+    var card = make("article", "card qa");
     var answer = make("div", "answer locked", item.answer);
     var btn = make("button", "unlock");
     answer.setAttribute("aria-live", "polite");
@@ -295,9 +309,7 @@ var ITEMS = [
     card.appendChild(make("h2", "question", item.question));
     card.appendChild(make("p", "label", "Answer"));
     card.appendChild(answer);
-    foot.appendChild(ship);
-    foot.appendChild(btn);
-    card.appendChild(foot);
+    card.appendChild(makeFoot(btn));
     item.answerEl = answer;
     item.btn = btn;
     return card;
@@ -314,7 +326,7 @@ var ITEMS = [
   }
 
   function buildAdCard() {
-    var card = make("article", "card ad");
+    var card = make("article", "card qa ad");
     var box = make("div", "ad-box");
     var holder = make("div");
     var tag = document.createElement("script");
@@ -324,7 +336,12 @@ var ITEMS = [
     tag.src = NATIVE_AD.src;
     box.appendChild(holder);
     card.appendChild(make("p", "label", "Sponsored"));
+    var sponsor = make("button", "unlock sponsor", "Sponsored");
+    sponsor.type = "button";
+    sponsor.tabIndex = -1;
+    sponsor.setAttribute("aria-hidden", "true");
     card.appendChild(box);
+    card.appendChild(makeFoot(sponsor));
     card.appendChild(tag);
     card.hidden = true;
     if ("MutationObserver" in window) {
