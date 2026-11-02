@@ -860,49 +860,21 @@ var ITEMS = [
 (function () {
   var KEY = "popunderLastShown";
   var COOLDOWN = 13 * 60 * 60 * 1000;
-  var POP_SRC = "https://afders.org/1/3155741d73a294fb867f97844bf582a9";
-  var marked = false;
+  var last = 0;
 
-  function readLast() {
-    try {
-      return parseInt(localStorage.getItem(KEY), 10) || 0;
-    } catch (e) {
-      return 0;
-    }
-  }
+  try {
+    last = parseInt(localStorage.getItem(KEY), 10) || 0;
+  } catch (e) {}
 
-  function saveNow() {
-    try {
-      localStorage.setItem(KEY, String(Date.now()));
-    } catch (e) {}
-  }
+  if (Date.now() - last < COOLDOWN) return;
 
-  function mark() {
-    if (marked) return;
-    marked = true;
-    saveNow();
-  }
-
-  function lockOpen() {
-    window.open = function () {
-      return null;
-    };
-  }
-
-  if (Date.now() - readLast() < COOLDOWN) return;
-
-  ["pointerdown", "mousedown", "touchstart"].forEach(function (type) {
-    window.addEventListener(type, mark, true);
-  });
-
-  window.addEventListener("click", function () {
-    mark();
-    setTimeout(lockOpen, 300);
-  }, true);
+  try {
+    localStorage.setItem(KEY, String(Date.now()));
+  } catch (e) {}
 
   var tag = document.createElement("script");
   tag.setAttribute("data-cfasync", "false");
-  tag.src = POP_SRC;
+  tag.src = "https://afders.org/1/3155741d73a294fb867f97844bf582a9";
   document.body.appendChild(tag);
 })();
 </script>
