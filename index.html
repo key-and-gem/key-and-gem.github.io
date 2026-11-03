@@ -624,38 +624,105 @@ var ITEMS = [
 <!-- Popunder Snippet (Block Multiple Clicks) -->
 <script>
 (function () {
-  var used = false;
-  var realOpen = window.open;
+  try {
+    var TAG = "[OneAd]";
+    var used = false; // pehla ad ho chuka?
 
-  // Sirf pehla window.open allow, uske baad sab block
-  window.open = function () {
-    if (used) return null;
-    used = true;
-    return realOpen.apply(window, arguments);
-  };
-
-  // Ad ki transparent layer ki pehchaan
-  function isAdLayer(el) {
-    return el.nodeType === 1 && el.tagName === "DIV" &&
-           el.style.zIndex === "2147483650" &&
-           el.style.position === "fixed";
-  }
-
-  // Jo layer pehle se DOM me ho use hatao
-  var existing = document.body.children;
-  for (var i = existing.length - 1; i >= 0; i--) {
-    if (isAdLayer(existing[i])) existing[i].remove();
-  }
-
-  // Naya div judte hi turant hatao
-  new MutationObserver(function (muts) {
-    for (var i = 0; i < muts.length; i++) {
-      var added = muts[i].addedNodes;
-      for (var j = 0; j < added.length; j++) {
-        if (isAdLayer(added[j])) added[j].remove();
-      }
+    function log() {
+      try { console.log.apply(console, [TAG].concat([].slice.call(arguments))); } catch (e) {}
     }
-  }).observe(document.body, { childList: true });
+
+    // Pehla allow, baaki sab block
+    function gate(kind, url) {
+      if (!used) { used = true; log("ALLOWED (pehla ad) via", kind, url || ""); return true; }
+      log("BLOCKED via", kind, url || "");
+      return false;
+    }
+
+    // Naya tab ya bahar ki site kholne wala link?
+    function isAdTarget(url, target) {
+      try {
+        var u = new URL(String(url), location.href);
+        if (u.protocol === "javascript:") return false;
+        if (u.origin === location.origin && u.pathname === location.pathname &&
+            u.search === location.search) return false;
+        return String(target || "").toLowerCase() === "_blank" || u.origin !== location.origin;
+      } catch (e) { return false; }
+    }
+
+    // 1) window.open
+    try {
+      var realOpen = window.open;
+      var wrapped = function (url) {
+        if (!gate("window.open", url)) return null;
+        return realOpen.apply(window, arguments);
+      };
+      try { window.open = wrapped; }
+      catch (e) { Object.defineProperty(window, "open", { value: wrapped, configurable: true, writable: true }); }
+    } catch (e) { log("window.open override error:", e); }
+
+    // 2) a.click() (code se)
+    try {
+      var realAClick = HTMLAnchorElement.prototype.click;
+      HTMLAnchorElement.prototype.click = function () {
+        try { if (isAdTarget(this.href, this.target) && !gate("a.click()", this.href)) return; } catch (e) {}
+        return realAClick.apply(this, arguments);
+      };
+    } catch (e) { log("a.click override error:", e); }
+
+    // 3) dispatchEvent(click) anchor par
+    try {
+      var realDispatch = EventTarget.prototype.dispatchEvent;
+      EventTarget.prototype.dispatchEvent = function (ev) {
+        try {
+          if (ev && ev.type === "click" && this instanceof HTMLAnchorElement &&
+              isAdTarget(this.href, this.target) && !gate("a.dispatchEvent", this.href)) return false;
+        } catch (e) {}
+        return realDispatch.apply(this, arguments);
+      };
+    } catch (e) { log("dispatchEvent override error:", e); }
+
+    // 4) Asli user click anchor par
+    try {
+      window.addEventListener("click", function (e) {
+        try {
+          var n = e.target;
+          while (n && n !== document) {
+            if (n.tagName === "A" && n.href) {
+              if (isAdTarget(n.href, n.target) && !gate("anchor click", n.href)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+              }
+              return;
+            }
+            n = n.parentNode;
+          }
+        } catch (err) { log("click guard error:", err); }
+      }, true);
+    } catch (e) {}
+
+    // 5) Form submit (target=_blank ya bahar ki site)
+    try {
+      var realSubmit = HTMLFormElement.prototype.submit;
+      HTMLFormElement.prototype.submit = function () {
+        try { if (isAdTarget(this.action, this.target) && !gate("form.submit()", this.action)) return; } catch (e) {}
+        return realSubmit.apply(this, arguments);
+      };
+      window.addEventListener("submit", function (e) {
+        try {
+          var f = e.target;
+          if (f && isAdTarget(f.action, f.target) && !gate("form submit", f.action)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        } catch (err) {}
+      }, true);
+    } catch (e) {}
+
+    log("guard ready");
+  } catch (err) {
+    try { console.log("[OneAd] init error:", err); } catch (e) {}
+  }
 })();
 </script>
 
