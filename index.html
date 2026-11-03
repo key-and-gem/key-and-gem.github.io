@@ -739,73 +739,6 @@ var ITEMS = [
   var HOST = "afders.org";
   var needRefresh = false;
   var loaderActive = false;
-  var SCROLL_KEY = "restoreScrollState";
-
-  // ---- Scroll position save (loader dikhne se pehle) ----
-  function saveScroll() {
-    try {
-      var anchor = null;
-      var cards = document.querySelectorAll("#feed .card");
-      for (var i = 0; i < cards.length; i++) {
-        var r = cards[i].getBoundingClientRect();
-        if (r.bottom > 0) {
-          // screen ke top par jo card hai uska index + uske andar kitna scroll hua hai
-          anchor = { i: i, off: Math.round(-r.top) };
-          break;
-        }
-      }
-      sessionStorage.setItem(SCROLL_KEY, JSON.stringify({
-        y: Math.round(window.scrollY),
-        a: anchor,
-        t: Date.now()
-      }));
-    } catch (e) {}
-  }
-
-  // ---- Scroll position restore (refresh ke baad) ----
-  (function restoreScroll() {
-    var data = null;
-    try {
-      data = JSON.parse(sessionStorage.getItem(SCROLL_KEY));
-      sessionStorage.removeItem(SCROLL_KEY);
-    } catch (e) {}
-    if (!data || Date.now() - data.t > 30000) return;
-
-    // Browser ka apna scroll restore beech mein na aaye
-    try {
-      if ("scrollRestoration" in history) {
-        history.scrollRestoration = "manual";
-      }
-    } catch (e) {}
-
-    var stopped = false;
-    function stop() { stopped = true; }
-    ["touchstart", "wheel", "mousedown", "keydown"].forEach(function (type) {
-      window.addEventListener(type, stop, { passive: true, once: true });
-    });
-
-    function target() {
-      if (data.a) {
-        var card = document.querySelectorAll("#feed .card")[data.a.i];
-        if (card) {
-          return Math.round(card.getBoundingClientRect().top + window.scrollY + data.a.off);
-        }
-      }
-      return data.y;
-    }
-
-    // Ad / naye cards load hone se layout badal sakta hai, isliye kuch der tak position set karte rehna
-    var started = Date.now();
-    function tick() {
-      if (stopped || Date.now() - started > 3000) return;
-      var t = target();
-      if (Math.abs(window.scrollY - t) > 1) {
-        window.scrollTo(0, t);
-      }
-      setTimeout(tick, 100);
-    }
-    tick();
-  })();
 
   function popunderLoaded() {
     var tag = Array.from(document.scripts).some(function (s) {
@@ -892,7 +825,6 @@ var ITEMS = [
     } else if (document.visibilityState === "visible" && needRefresh) {
       needRefresh = false;
       console.log("User returned. Showing loader and refreshing the page.");
-      saveScroll();
       showLoader();
       setTimeout(function () {
         location.reload();
