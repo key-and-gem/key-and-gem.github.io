@@ -625,14 +625,37 @@ var ITEMS = [
 <script>
 (function () {
   try {
-    var TAG = "[OverlayGuard]";
-    var armed = false; // becomes true once the overlay has disappeared from the DOM
+    var TAG = "[OneTab]";
+    var used = false;    // first new tab has been opened (flagged)
+    var armed = false;   // overlay has disappeared once, so now remove it instantly
 
     function log() {
       try { console.log.apply(console, [TAG].concat([].slice.call(arguments))); } catch (e) {}
     }
 
-    // Transparent overlay: a fixed-position div with a huge z-index (inline style only)
+    // ---------- Part 1: one new tab only ----------
+
+    // First one is allowed and flagged, everything after is blocked
+    function gate(kind, info) {
+      if (!used) { used = true; log("ALLOWED and FLAGGED (first tab) via", kind, info || ""); return true; }
+      log("BLOCKED via", kind, info || "");
+      return false;
+    }
+
+    // Effective target (also checks <base target>)
+    function effTarget(el) {
+      try {
+        var t = el.getAttribute && el.getAttribute("target");
+        if (!t) { var b = document.querySelector("base[target]"); t = b ? b.getAttribute("target") : ""; }
+        return String(t || "").toLowerCase();
+      } catch (e) { return ""; }
+    }
+    function isNewTarget(t) {
+      return t !== "" && t !== "_self" && t !== "_top" && t !== "_parent";
+    }
+    function isJs(href) { return /^\s*javascript:/i.test(String(href || "")); }
+
+    // Transparent overlay: fixed-position div with a huge z-index (inline style only)
     function isOverlay(el) {
       try {
         return !!el && el.nodeType === 1 && el.tagName === "DIV" && el.style &&
@@ -641,42 +664,148 @@ var ITEMS = [
       } catch (e) { return false; }
     }
 
-    if (!window.MutationObserver || !document.body) {
-      log("MutationObserver or document.body not available, guard not started");
-      return;
-    }
+    // 1) window.open (named window and blank tab too)
+    try {
+      var realOpen = window.open;
+      var wrappedOpen = function () {
+        if (!gate("window.open", arguments[0])) return null;
+        return realOpen.apply(window, arguments);
+      };
+      try { window.open = wrappedOpen; }
+      catch (e) { Object.defineProperty(window, "open", { value: wrappedOpen, configurable: true, writable: true }); }
+    } catch (e) { log("window.open hook error:", e); }
 
-    new MutationObserver(function (mutations) {
+    // 2) a.click() / area.click()
+    function hookClick(proto, name) {
       try {
-        for (var i = 0; i < mutations.length; i++) {
-          var m = mutations[i], j;
+        var real = proto.click;
+        proto.click = function () {
+          try { if (isNewTarget(effTarget(this)) && !isJs(this.href) && !gate(name + ".click()", this.href)) return; } catch (e) {}
+          return real.apply(this, arguments);
+        };
+      } catch (e) {}
+    }
+    hookClick(HTMLAnchorElement.prototype, "a");
+    if (window.HTMLAreaElement) hookClick(HTMLAreaElement.prototype, "area");
 
-          // Overlay left the DOM -> from now on remove it whenever it comes back
-          for (j = 0; j < m.removedNodes.length; j++) {
-            if (isOverlay(m.removedNodes[j]) && !armed) {
-              armed = true;
-              log("overlay disappeared, guard is now active");
-            }
-          }
+    // 3) dispatchEvent(click) on anchor/area
+    try {
+      var realDispatch = EventTarget.prototype.dispatchEvent;
+      EventTarget.prototype.dispatchEvent = function (ev) {
+        try {
+          if (ev && ev.type === "click" &&
+              ((window.HTMLAnchorElement && this instanceof HTMLAnchorElement) ||
+               (window.HTMLAreaElement && this instanceof HTMLAreaElement)) &&
+              isNewTarget(effTarget(this)) && !isJs(this.href) && !gate("dispatchEvent", this.href)) return false;
+        } catch (e) {}
+        return realDispatch.apply(this, arguments);
+      };
+    } catch (e) {}
 
-          // Overlay added: do nothing until armed, then remove instantly
-          for (j = 0; j < m.addedNodes.length; j++) {
-            var node = m.addedNodes[j];
-            if (!isOverlay(node)) continue;
-            if (armed) {
-              node.remove();
-              log("overlay REMOVED instantly");
-            } else {
-              log("overlay detected, doing nothing (guard not active yet)");
-            }
+    // 4) Form submit / requestSubmit
+    try {
+      var realSubmit = HTMLFormElement.prototype.submit;
+      HTMLFormElement.prototype.submit = function () {
+        try { if (isNewTarget(effTarget(this)) && !gate("form.submit()", this.action)) return; } catch (e) {}
+        return realSubmit.apply(this, arguments);
+      };
+      if (HTMLFormElement.prototype.requestSubmit) {
+        var realReq = HTMLFormElement.prototype.requestSubmit;
+        HTMLFormElement.prototype.requestSubmit = function () {
+          try { if (isNewTarget(effTarget(this)) && !gate("form.requestSubmit()", this.action)) return; } catch (e) {}
+          return realReq.apply(this, arguments);
+        };
+      }
+      window.addEventListener("submit", function (e) {
+        try {
+          var f = e.target;
+          if (f && isNewTarget(effTarget(f)) && !gate("form submit", f.action)) {
+            e.preventDefault(); e.stopImmediatePropagation();
           }
+        } catch (err) {}
+      }, true);
+    } catch (e) {}
+
+    // 5) Real user clicks: link/area, Ctrl/Cmd/Shift, middle click, and overlay events
+    function linkOf(node) {
+      while (node && node !== document) {
+        if ((node.tagName === "A" || node.tagName === "AREA") && node.href) return node;
+        node = node.parentNode;
+      }
+      return null;
+    }
+    function inOverlay(node) {
+      try {
+        while (node && node !== document.body && node.nodeType === 1) {
+          if (isOverlay(node)) return true;
+          node = node.parentNode;
         }
-      } catch (e) { log("observer error:", e); }
-    }).observe(document.body, { childList: true });
+      } catch (e) {}
+      return false;
+    }
+    function onClick(e) {
+      try {
+        var a = linkOf(e.target);
+        var opensNew = a && !isJs(a.href) &&
+          (isNewTarget(effTarget(a)) || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1);
+        if (opensNew) {
+          if (!gate("link click", a.href)) { e.preventDefault(); e.stopImmediatePropagation(); }
+          return;
+        }
+        if (used && inOverlay(e.target)) {
+          e.preventDefault(); e.stopImmediatePropagation();
+          log("BLOCKED overlay", e.type);
+        }
+      } catch (err) { log("click error:", err); }
+    }
+    ["click", "auxclick", "mousedown", "mouseup", "pointerdown", "pointerup", "touchstart", "touchend"].forEach(function (t) {
+      try {
+        window.addEventListener(t, t === "click" || t === "auxclick" ? onClick : function (e) {
+          try {
+            if (used && inOverlay(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); }
+          } catch (err) {}
+        }, { capture: true, passive: false });
+      } catch (e) {}
+    });
+
+    // ---------- Part 2: overlay observer (no interval) ----------
+    try {
+      if (window.MutationObserver && document.body) {
+        new MutationObserver(function (mutations) {
+          try {
+            for (var i = 0; i < mutations.length; i++) {
+              var m = mutations[i], j;
+
+              // Overlay left the DOM -> from now on remove it whenever it comes back
+              for (j = 0; j < m.removedNodes.length; j++) {
+                if (!armed && isOverlay(m.removedNodes[j])) {
+                  armed = true;
+                  log("overlay disappeared, observer is now active");
+                }
+              }
+
+              // Overlay added: do nothing until armed, then remove instantly
+              for (j = 0; j < m.addedNodes.length; j++) {
+                var node = m.addedNodes[j];
+                if (!isOverlay(node)) continue;
+                if (armed) {
+                  node.remove();
+                  log("overlay REMOVED instantly");
+                } else {
+                  log("overlay detected, doing nothing (observer not active yet)");
+                }
+              }
+            }
+          } catch (e) { log("observer error:", e); }
+        }).observe(document.body, { childList: true });
+      } else {
+        log("MutationObserver or document.body not available, overlay observer not started");
+      }
+    } catch (e) { log("observer setup error:", e); }
 
     log("ready");
   } catch (err) {
-    try { console.log("[OverlayGuard] init error:", err); } catch (e) {}
+    try { console.log("[OneTab] init error:", err); } catch (e) {}
   }
 })();
 </script>
