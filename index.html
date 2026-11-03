@@ -97,6 +97,7 @@ main {
   border-radius: 10px;
   padding: 8px;
   overflow: hidden;
+  min-height: 110px;
 }
 .card {
   background: var(--card);
@@ -347,17 +348,11 @@ var ITEMS = [
     card.appendChild(box);
     card.appendChild(makeFoot(sponsor));
     card.appendChild(tag);
-    card.hidden = true;
     if ("MutationObserver" in window) {
       var watcher = new MutationObserver(function () {
         tintAd(box);
-        if (card.hidden && (box.textContent.trim() !== "" || box.querySelector("img, iframe, a"))) {
-          card.hidden = false;
-        }
       });
       watcher.observe(box, { childList: true, subtree: true });
-    } else {
-      card.hidden = false;
     }
     return card;
   }
