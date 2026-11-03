@@ -427,7 +427,8 @@ var ITEMS = [
 
 <script>
 (function () {
-  var base = document.getElementById("pirate");
+  var tpl = document.getElementById("pirate");
+  var feed = document.getElementById("feed");
   var spots = ["left", "bottom", "right", "top"];
   var moves = {
     left: ["top", "bottom"],
@@ -435,63 +436,29 @@ var ITEMS = [
     bottom: ["left", "right"],
     right: ["top", "bottom"]
   };
-  var taken = {};
-  var pirates = [];
-  var size = 0;
-  var peek = 0;
   var SLIDE = "left .3s ease-out, top .3s ease-out";
-  var hostObserver = null;
+  var states = [];
+  var resizeObs = null;
 
-  // Card ka size badalne par (Show/Hide Answer) pirate ko dobara sahi jagah par set karo
-  if ("ResizeObserver" in window) {
-    hostObserver = new ResizeObserver(function (entries) {
-      entries.forEach(function (entry) {
-        var host = entry.target;
-        pirates.forEach(function (p) {
-          if (p.el.parentNode !== host || !p.side || p.leaving) {
-            return;
-          }
-          if (p.hw === host.clientWidth && p.hh === host.clientHeight) {
-            return;
-          }
-          measure(host);
-          p.hw = host.clientWidth;
-          p.hh = host.clientHeight;
-          p.el.style.transition = "none";
-          place(p, p.side, true);
-        });
-      });
-    });
-  }
+  // Original pirate sirf template hai; har card ko apne clones milte hain
+  tpl.parentNode.removeChild(tpl);
+  tpl.removeAttribute("id");
 
-  function bestHost() {
-    var cards = document.querySelectorAll(".card.qa");
-    var best = null;
-    var bestVisible = 0;
-    for (var i = 0; i < cards.length; i++) {
-      var r = cards[i].getBoundingClientRect();
-      var visible = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
-      if (visible > bestVisible) {
-        bestVisible = visible;
-        best = cards[i];
-      }
-    }
-    return best;
-  }
-
-  function measure(host) {
-    size = Math.round(Math.max(52, Math.min(84, host.clientWidth * 0.15)));
-    peek = Math.round(size * 0.46);
-    pirates.forEach(function (p) {
-      p.el.style.width = size + "px";
-      p.el.style.height = size + "px";
+  function measure(st) {
+    st.size = Math.round(Math.max(52, Math.min(84, st.host.clientWidth * 0.15)));
+    st.peek = Math.round(st.size * 0.46);
+    st.pirates.forEach(function (p) {
+      p.el.style.width = st.size + "px";
+      p.el.style.height = st.size + "px";
     });
   }
 
   function place(p, side, shown) {
-    var host = p.el.parentNode;
-    var w = host.clientWidth;
-    var h = host.clientHeight;
+    var st = p.st;
+    var w = st.host.clientWidth;
+    var h = st.host.clientHeight;
+    var size = st.size;
+    var peek = st.peek;
     var out = shown ? 0 : peek;
     var left = 0;
     var top = 0;
@@ -517,19 +484,6 @@ var ITEMS = [
     p.el.style.transform = "rotate(" + rot + "deg)";
   }
 
-  function makePirate(el, pick) {
-    var p = {
-      el: el,
-      pick: pick,
-      side: null,
-      last: spots[Math.floor(Math.random() * spots.length)],
-      leaving: false,
-      timer: null
-    };
-    pirates.push(p);
-    return p;
-  }
-
   function schedule(p, delay) {
     clearTimeout(p.timer);
     p.timer = setTimeout(function () {
@@ -537,30 +491,41 @@ var ITEMS = [
     }, delay);
   }
 
+  function dropCard(st) {
+    st.pirates.forEach(function (p) {
+      clearTimeout(p.timer);
+    });
+    if (resizeObs) {
+      resizeObs.unobserve(st.host);
+    }
+    var k = states.indexOf(st);
+    if (k > -1) {
+      states.splice(k, 1);
+    }
+  }
+
   function appear(p) {
-    var host = bestHost();
-    if (!host) {
+    var st = p.st;
+    if (!st.host.isConnected) {
+      dropCard(st);
+      return;
+    }
+    if (st.host.hidden || st.host.clientWidth === 0) {
       schedule(p, 1000);
       return;
     }
-    if (p.el.parentNode !== host) {
-      host.appendChild(p.el);
-    }
-    measure(host);
-    p.hw = host.clientWidth;
-    p.hh = host.clientHeight;
-    if (hostObserver) {
-      hostObserver.observe(host);
-    }
+    measure(st);
+    st.hw = st.host.clientWidth;
+    st.hh = st.host.clientHeight;
     var options = p.pick(p).filter(function (s) {
-      return !taken[s];
+      return !st.taken[s];
     });
     if (options.length === 0) {
       schedule(p, 700);
       return;
     }
     var side = options[Math.floor(Math.random() * options.length)];
-    taken[side] = true;
+    st.taken[side] = true;
     p.side = side;
     p.last = side;
     p.el.style.transition = "none";
@@ -579,51 +544,137 @@ var ITEMS = [
     if (!p.side || p.leaving) {
       return;
     }
+    var st = p.st;
     var side = p.side;
     p.leaving = true;
     p.el.style.transition = SLIDE;
     place(p, side, false);
     p.timer = setTimeout(function () {
       p.el.style.display = "none";
-      taken[side] = false;
+      st.taken[side] = false;
       p.side = null;
       p.leaving = false;
       schedule(p, delay);
     }, 400);
   }
 
-  var guided = makePirate(base, function (p) {
-    return moves[p.last];
-  });
-  var wild = makePirate(base.cloneNode(true), function (p) {
-    return spots.filter(function (s) {
-      return s !== p.last;
-    });
-  });
-  wild.el.removeAttribute("id");
-  base.parentNode.appendChild(wild.el);
-
-  pirates.forEach(function (p) {
-    p.el.addEventListener("pointerdown", function (e) {
+  function makePirate(st, pick) {
+    var el = tpl.cloneNode(true);
+    var p = {
+      st: st,
+      el: el,
+      pick: pick,
+      side: null,
+      last: spots[Math.floor(Math.random() * spots.length)],
+      leaving: false,
+      timer: null
+    };
+    st.host.appendChild(el);
+    el.addEventListener("pointerdown", function (e) {
       e.preventDefault();
       leave(p, 0);
     });
-  });
+    st.pirates.push(p);
+    return p;
+  }
+
+  function addCard(host) {
+    var st = {
+      host: host,
+      taken: {},
+      pirates: [],
+      size: 0,
+      peek: 0,
+      hw: host.clientWidth,
+      hh: host.clientHeight
+    };
+    states.push(st);
+    var guided = makePirate(st, function (p) {
+      return moves[p.last];
+    });
+    var wild = makePirate(st, function (p) {
+      return spots.filter(function (s) {
+        return s !== p.last;
+      });
+    });
+    measure(st);
+    if (resizeObs) {
+      resizeObs.observe(host);
+    }
+    // Har card ka timing thoda alag rakho taaki sab ek saath na aayein
+    schedule(guided, 1000 + Math.random() * 2000);
+    schedule(wild, 3000 + Math.random() * 2500);
+  }
+
+  // Card ka size badalne par (Show/Hide Answer) pirates ko sahi jagah par rakho
+  if ("ResizeObserver" in window) {
+    resizeObs = new ResizeObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var st = null;
+        for (var i = 0; i < states.length; i++) {
+          if (states[i].host === entry.target) {
+            st = states[i];
+            break;
+          }
+        }
+        if (!st) {
+          return;
+        }
+        if (st.hw === st.host.clientWidth && st.hh === st.host.clientHeight) {
+          return;
+        }
+        st.hw = st.host.clientWidth;
+        st.hh = st.host.clientHeight;
+        measure(st);
+        st.pirates.forEach(function (p) {
+          if (p.side && !p.leaving) {
+            p.el.style.transition = "none";
+            place(p, p.side, true);
+          }
+        });
+      });
+    });
+  }
+
+  // Jitne cards load ho chuke hain un sabko pirates do (naye cards ko load hote hi)
+  function sync() {
+    states.slice().forEach(function (st) {
+      if (!st.host.isConnected) {
+        dropCard(st);
+      }
+    });
+    var cards = feed.querySelectorAll(".card.qa");
+    for (var i = 0; i < cards.length; i++) {
+      var known = states.some(function (st) {
+        return st.host === cards[i];
+      });
+      if (!known) {
+        addCard(cards[i]);
+      }
+    }
+  }
+
+  if ("MutationObserver" in window) {
+    new MutationObserver(sync).observe(feed, { childList: true });
+  }
 
   window.addEventListener("resize", function () {
-    taken = {};
-    pirates.forEach(function (p) {
-      clearTimeout(p.timer);
-      p.side = null;
-      p.leaving = false;
-      p.el.style.transition = "none";
-      p.el.style.display = "none";
-      schedule(p, 1500);
+    states.forEach(function (st) {
+      st.taken = {};
+      st.hw = st.host.clientWidth;
+      st.hh = st.host.clientHeight;
+      st.pirates.forEach(function (p, idx) {
+        clearTimeout(p.timer);
+        p.side = null;
+        p.leaving = false;
+        p.el.style.transition = "none";
+        p.el.style.display = "none";
+        schedule(p, 1500 + idx * 1500);
+      });
     });
   });
 
-  schedule(guided, 1500);
-  schedule(wild, 3500);
+  sync();
 })();
 </script>
 <script>
