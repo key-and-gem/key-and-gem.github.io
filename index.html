@@ -625,142 +625,58 @@ var ITEMS = [
 <script>
 (function () {
   try {
-    var TAG = "[OneTab]";
-    var used = false;        // pehla naya tab ho chuka
+    var TAG = "[OverlayGuard]";
+    var armed = false; // becomes true once the overlay has disappeared from the DOM
 
     function log() {
       try { console.log.apply(console, [TAG].concat([].slice.call(arguments))); } catch (e) {}
     }
 
-    // Pehla allow, baaki sab block
-    function gate(kind, info) {
-      if (!used) { used = true; log("ALLOWED (pehla tab) via", kind, info || ""); return true; }
-      log("BLOCKED via", kind, info || "");
-      return false;
-    }
-
-    // Effective target (base target bhi dekho)
-    function effTarget(el) {
+    // Transparent overlay: a fixed-position div with a huge z-index (inline style only)
+    function isOverlay(el) {
       try {
-        var t = el.getAttribute && el.getAttribute("target");
-        if (!t) { var b = document.querySelector("base[target]"); t = b ? b.getAttribute("target") : ""; }
-        return String(t || "").toLowerCase();
-      } catch (e) { return ""; }
+        return !!el && el.nodeType === 1 && el.tagName === "DIV" && el.style &&
+               el.style.position === "fixed" &&
+               Number(el.style.zIndex) > 1000000;
+      } catch (e) { return false; }
     }
-    function isNewTarget(t) {
-      return t !== "" && t !== "_self" && t !== "_top" && t !== "_parent";
+
+    if (!window.MutationObserver || !document.body) {
+      log("MutationObserver or document.body not available, guard not started");
+      return;
     }
-    function isJs(href) { return /^\s*javascript:/i.test(String(href || "")); }
 
-    // 1) window.open (named window aur blank tab bhi)
-    try {
-      var realOpen = window.open;
-      var wrappedOpen = function () {
-        if (!gate("window.open", arguments[0])) return null;
-        return realOpen.apply(window, arguments);
-      };
-      try { window.open = wrappedOpen; }
-      catch (e) { Object.defineProperty(window, "open", { value: wrappedOpen, configurable: true, writable: true }); }
-    } catch (e) { log("window.open hook error:", e); }
-
-    // 2) a.click() / area.click()
-    function hookClick(proto, name) {
+    new MutationObserver(function (mutations) {
       try {
-        var real = proto.click;
-        proto.click = function () {
-          try { if (isNewTarget(effTarget(this)) && !isJs(this.href) && !gate(name + ".click()", this.href)) return; } catch (e) {}
-          return real.apply(this, arguments);
-        };
-      } catch (e) {}
-    }
-    hookClick(HTMLAnchorElement.prototype, "a");
-    if (window.HTMLAreaElement) hookClick(HTMLAreaElement.prototype, "area");
+        for (var i = 0; i < mutations.length; i++) {
+          var m = mutations[i], j;
 
-    // 3) dispatchEvent(click) anchor/area par
-    try {
-      var realDispatch = EventTarget.prototype.dispatchEvent;
-      EventTarget.prototype.dispatchEvent = function (ev) {
-        try {
-          if (ev && ev.type === "click" &&
-              ((window.HTMLAnchorElement && this instanceof HTMLAnchorElement) ||
-               (window.HTMLAreaElement && this instanceof HTMLAreaElement)) &&
-              isNewTarget(effTarget(this)) && !isJs(this.href) && !gate("dispatchEvent", this.href)) return false;
-        } catch (e) {}
-        return realDispatch.apply(this, arguments);
-      };
-    } catch (e) {}
-
-    // 4) Form submit / requestSubmit
-    try {
-      var realSubmit = HTMLFormElement.prototype.submit;
-      HTMLFormElement.prototype.submit = function () {
-        try { if (isNewTarget(effTarget(this)) && !gate("form.submit()", this.action)) return; } catch (e) {}
-        return realSubmit.apply(this, arguments);
-      };
-      if (HTMLFormElement.prototype.requestSubmit) {
-        var realReq = HTMLFormElement.prototype.requestSubmit;
-        HTMLFormElement.prototype.requestSubmit = function () {
-          try { if (isNewTarget(effTarget(this)) && !gate("form.requestSubmit()", this.action)) return; } catch (e) {}
-          return realReq.apply(this, arguments);
-        };
-      }
-      window.addEventListener("submit", function (e) {
-        try {
-          var f = e.target;
-          if (f && isNewTarget(effTarget(f)) && !gate("form submit", f.action)) {
-            e.preventDefault(); e.stopImmediatePropagation();
+          // Overlay left the DOM -> from now on remove it whenever it comes back
+          for (j = 0; j < m.removedNodes.length; j++) {
+            if (isOverlay(m.removedNodes[j]) && !armed) {
+              armed = true;
+              log("overlay disappeared, guard is now active");
+            }
           }
-        } catch (err) {}
-      }, true);
-    } catch (e) {}
 
-    // 5) Asli user click: link/area, overlay, Ctrl/Cmd/Shift, middle click
-    function linkOf(node) {
-      while (node && node !== document) {
-        if ((node.tagName === "A" || node.tagName === "AREA") && node.href) return node;
-        node = node.parentNode;
-      }
-      return null;
-    }
-    function inAdOverlay(node) {
-      try {
-        while (node && node !== document.body && node.nodeType === 1) {
-          var cs = getComputedStyle(node);
-          if (cs.position === "fixed" && Number(cs.zIndex) > 1000000) return true;
-          node = node.parentNode;
+          // Overlay added: do nothing until armed, then remove instantly
+          for (j = 0; j < m.addedNodes.length; j++) {
+            var node = m.addedNodes[j];
+            if (!isOverlay(node)) continue;
+            if (armed) {
+              node.remove();
+              log("overlay REMOVED instantly");
+            } else {
+              log("overlay detected, doing nothing (guard not active yet)");
+            }
+          }
         }
-      } catch (e) {}
-      return false;
-    }
-    function onClick(e) {
-      try {
-        var a = linkOf(e.target);
-        var opensNew = a && !isJs(a.href) &&
-          (isNewTarget(effTarget(a)) || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1);
-        if (opensNew) {
-          if (!gate("link click", a.href)) { e.preventDefault(); e.stopImmediatePropagation(); }
-          return;
-        }
-        // pehle tab ke baad ad overlay par kuch bhi block
-        if (used && inAdOverlay(e.target)) {
-          e.preventDefault(); e.stopImmediatePropagation();
-          log("BLOCKED overlay", e.type);
-        }
-      } catch (err) { log("click error:", err); }
-    }
-    ["click", "auxclick", "mousedown", "mouseup", "pointerdown", "pointerup", "touchstart", "touchend"].forEach(function (t) {
-      try {
-        window.addEventListener(t, t === "click" || t === "auxclick" ? onClick : function (e) {
-          try {
-            if (used && inAdOverlay(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); }
-          } catch (err) {}
-        }, { capture: true, passive: false });
-      } catch (e) {}
-    });
+      } catch (e) { log("observer error:", e); }
+    }).observe(document.body, { childList: true });
 
     log("ready");
   } catch (err) {
-    try { console.log("[OneTab] init error:", err); } catch (e) {}
+    try { console.log("[OverlayGuard] init error:", err); } catch (e) {}
   }
 })();
 </script>
