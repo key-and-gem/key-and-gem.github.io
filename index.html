@@ -625,103 +625,142 @@ var ITEMS = [
 <script>
 (function () {
   try {
-    var TAG = "[OneAd]";
-    var used = false; // pehla ad ho chuka?
+    var TAG = "[OneTab]";
+    var used = false;        // pehla naya tab ho chuka
 
     function log() {
       try { console.log.apply(console, [TAG].concat([].slice.call(arguments))); } catch (e) {}
     }
 
     // Pehla allow, baaki sab block
-    function gate(kind, url) {
-      if (!used) { used = true; log("ALLOWED (pehla ad) via", kind, url || ""); return true; }
-      log("BLOCKED via", kind, url || "");
+    function gate(kind, info) {
+      if (!used) { used = true; log("ALLOWED (pehla tab) via", kind, info || ""); return true; }
+      log("BLOCKED via", kind, info || "");
       return false;
     }
 
-    // Naya tab ya bahar ki site kholne wala link?
-    function isAdTarget(url, target) {
+    // Effective target (base target bhi dekho)
+    function effTarget(el) {
       try {
-        var u = new URL(String(url), location.href);
-        if (u.protocol === "javascript:") return false;
-        if (u.origin === location.origin && u.pathname === location.pathname &&
-            u.search === location.search) return false;
-        return String(target || "").toLowerCase() === "_blank" || u.origin !== location.origin;
-      } catch (e) { return false; }
+        var t = el.getAttribute && el.getAttribute("target");
+        if (!t) { var b = document.querySelector("base[target]"); t = b ? b.getAttribute("target") : ""; }
+        return String(t || "").toLowerCase();
+      } catch (e) { return ""; }
     }
+    function isNewTarget(t) {
+      return t !== "" && t !== "_self" && t !== "_top" && t !== "_parent";
+    }
+    function isJs(href) { return /^\s*javascript:/i.test(String(href || "")); }
 
-    // 1) window.open
+    // 1) window.open (named window aur blank tab bhi)
     try {
       var realOpen = window.open;
-      var wrapped = function (url) {
-        if (!gate("window.open", url)) return null;
+      var wrappedOpen = function () {
+        if (!gate("window.open", arguments[0])) return null;
         return realOpen.apply(window, arguments);
       };
-      try { window.open = wrapped; }
-      catch (e) { Object.defineProperty(window, "open", { value: wrapped, configurable: true, writable: true }); }
-    } catch (e) { log("window.open override error:", e); }
+      try { window.open = wrappedOpen; }
+      catch (e) { Object.defineProperty(window, "open", { value: wrappedOpen, configurable: true, writable: true }); }
+    } catch (e) { log("window.open hook error:", e); }
 
-    // 2) a.click() (code se)
-    try {
-      var realAClick = HTMLAnchorElement.prototype.click;
-      HTMLAnchorElement.prototype.click = function () {
-        try { if (isAdTarget(this.href, this.target) && !gate("a.click()", this.href)) return; } catch (e) {}
-        return realAClick.apply(this, arguments);
-      };
-    } catch (e) { log("a.click override error:", e); }
+    // 2) a.click() / area.click()
+    function hookClick(proto, name) {
+      try {
+        var real = proto.click;
+        proto.click = function () {
+          try { if (isNewTarget(effTarget(this)) && !isJs(this.href) && !gate(name + ".click()", this.href)) return; } catch (e) {}
+          return real.apply(this, arguments);
+        };
+      } catch (e) {}
+    }
+    hookClick(HTMLAnchorElement.prototype, "a");
+    if (window.HTMLAreaElement) hookClick(HTMLAreaElement.prototype, "area");
 
-    // 3) dispatchEvent(click) anchor par
+    // 3) dispatchEvent(click) anchor/area par
     try {
       var realDispatch = EventTarget.prototype.dispatchEvent;
       EventTarget.prototype.dispatchEvent = function (ev) {
         try {
-          if (ev && ev.type === "click" && this instanceof HTMLAnchorElement &&
-              isAdTarget(this.href, this.target) && !gate("a.dispatchEvent", this.href)) return false;
+          if (ev && ev.type === "click" &&
+              ((window.HTMLAnchorElement && this instanceof HTMLAnchorElement) ||
+               (window.HTMLAreaElement && this instanceof HTMLAreaElement)) &&
+              isNewTarget(effTarget(this)) && !isJs(this.href) && !gate("dispatchEvent", this.href)) return false;
         } catch (e) {}
         return realDispatch.apply(this, arguments);
       };
-    } catch (e) { log("dispatchEvent override error:", e); }
-
-    // 4) Asli user click anchor par
-    try {
-      window.addEventListener("click", function (e) {
-        try {
-          var n = e.target;
-          while (n && n !== document) {
-            if (n.tagName === "A" && n.href) {
-              if (isAdTarget(n.href, n.target) && !gate("anchor click", n.href)) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-              }
-              return;
-            }
-            n = n.parentNode;
-          }
-        } catch (err) { log("click guard error:", err); }
-      }, true);
     } catch (e) {}
 
-    // 5) Form submit (target=_blank ya bahar ki site)
+    // 4) Form submit / requestSubmit
     try {
       var realSubmit = HTMLFormElement.prototype.submit;
       HTMLFormElement.prototype.submit = function () {
-        try { if (isAdTarget(this.action, this.target) && !gate("form.submit()", this.action)) return; } catch (e) {}
+        try { if (isNewTarget(effTarget(this)) && !gate("form.submit()", this.action)) return; } catch (e) {}
         return realSubmit.apply(this, arguments);
       };
+      if (HTMLFormElement.prototype.requestSubmit) {
+        var realReq = HTMLFormElement.prototype.requestSubmit;
+        HTMLFormElement.prototype.requestSubmit = function () {
+          try { if (isNewTarget(effTarget(this)) && !gate("form.requestSubmit()", this.action)) return; } catch (e) {}
+          return realReq.apply(this, arguments);
+        };
+      }
       window.addEventListener("submit", function (e) {
         try {
           var f = e.target;
-          if (f && isAdTarget(f.action, f.target) && !gate("form submit", f.action)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
+          if (f && isNewTarget(effTarget(f)) && !gate("form submit", f.action)) {
+            e.preventDefault(); e.stopImmediatePropagation();
           }
         } catch (err) {}
       }, true);
     } catch (e) {}
 
-    log("guard ready");
+    // 5) Asli user click: link/area, overlay, Ctrl/Cmd/Shift, middle click
+    function linkOf(node) {
+      while (node && node !== document) {
+        if ((node.tagName === "A" || node.tagName === "AREA") && node.href) return node;
+        node = node.parentNode;
+      }
+      return null;
+    }
+    function inAdOverlay(node) {
+      try {
+        while (node && node !== document.body && node.nodeType === 1) {
+          var cs = getComputedStyle(node);
+          if (cs.position === "fixed" && Number(cs.zIndex) > 1000000) return true;
+          node = node.parentNode;
+        }
+      } catch (e) {}
+      return false;
+    }
+    function onClick(e) {
+      try {
+        var a = linkOf(e.target);
+        var opensNew = a && !isJs(a.href) &&
+          (isNewTarget(effTarget(a)) || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1);
+        if (opensNew) {
+          if (!gate("link click", a.href)) { e.preventDefault(); e.stopImmediatePropagation(); }
+          return;
+        }
+        // pehle tab ke baad ad overlay par kuch bhi block
+        if (used && inAdOverlay(e.target)) {
+          e.preventDefault(); e.stopImmediatePropagation();
+          log("BLOCKED overlay", e.type);
+        }
+      } catch (err) { log("click error:", err); }
+    }
+    ["click", "auxclick", "mousedown", "mouseup", "pointerdown", "pointerup", "touchstart", "touchend"].forEach(function (t) {
+      try {
+        window.addEventListener(t, t === "click" || t === "auxclick" ? onClick : function (e) {
+          try {
+            if (used && inAdOverlay(e.target)) { e.preventDefault(); e.stopImmediatePropagation(); }
+          } catch (err) {}
+        }, { capture: true, passive: false });
+      } catch (e) {}
+    });
+
+    log("ready");
   } catch (err) {
-    try { console.log("[OneAd] init error:", err); } catch (e) {}
+    try { console.log("[OneTab] init error:", err); } catch (e) {}
   }
 })();
 </script>
