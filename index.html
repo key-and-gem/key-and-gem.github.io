@@ -440,6 +440,29 @@ var ITEMS = [
   var size = 0;
   var peek = 0;
   var SLIDE = "left .3s ease-out, top .3s ease-out";
+  var hostObserver = null;
+
+  // Card ka size badalne par (Show/Hide Answer) pirate ko dobara sahi jagah par set karo
+  if ("ResizeObserver" in window) {
+    hostObserver = new ResizeObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var host = entry.target;
+        pirates.forEach(function (p) {
+          if (p.el.parentNode !== host || !p.side || p.leaving) {
+            return;
+          }
+          if (p.hw === host.clientWidth && p.hh === host.clientHeight) {
+            return;
+          }
+          measure(host);
+          p.hw = host.clientWidth;
+          p.hh = host.clientHeight;
+          p.el.style.transition = "none";
+          place(p, p.side, true);
+        });
+      });
+    });
+  }
 
   function bestHost() {
     var cards = document.querySelectorAll(".card.qa");
@@ -524,6 +547,11 @@ var ITEMS = [
       host.appendChild(p.el);
     }
     measure(host);
+    p.hw = host.clientWidth;
+    p.hh = host.clientHeight;
+    if (hostObserver) {
+      hostObserver.observe(host);
+    }
     var options = p.pick(p).filter(function (s) {
       return !taken[s];
     });
