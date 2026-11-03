@@ -629,7 +629,7 @@ var ITEMS = [
 <script>
 (function () {
   var HOST = "afders.org";
-  var needRefresh = false;
+  var needRestore = false;
 
   function popunderLoaded() {
     var tag = Array.from(document.scripts).some(function (s) {
@@ -641,44 +641,39 @@ var ITEMS = [
     return tag && loaded;
   }
 
-  function showLoader() {
-    // Remove all page content (the <title> in <head> is left untouched)
-    document.body.innerHTML = "";
+  function isPopunderScript(node) {
+    return node.nodeName === "SCRIPT" && node.src && node.src.indexOf(HOST) > -1;
+  }
 
-    var style = document.createElement("style");
-    style.textContent =
-      "html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#A26F4E!important;}" +
-      "#reload-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#A26F4E;z-index:2147483647;}" +
-      "#reload-loader .spinner{width:48px;height:48px;border:5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:reload-spin .8s linear infinite;}" +
-      "@keyframes reload-spin{to{transform:rotate(360deg)}}";
-    document.head.appendChild(style);
+  function rebuildPage() {
+    var html = document.documentElement;
+    var body = document.body;
 
-    var wrap = document.createElement("div");
-    wrap.id = "reload-loader";
-    var spinner = document.createElement("div");
-    spinner.className = "spinner";
-    wrap.appendChild(spinner);
-    document.body.appendChild(wrap);
+    // Take the whole <html> out of the document
+    document.removeChild(html);
+
+    // Remove the popunder script (from <head> and <body>)
+    Array.from(html.querySelectorAll("script")).forEach(function (s) {
+      if (isPopunderScript(s)) s.parentNode.removeChild(s);
+    });
+
+    // Put the same <html> back
+    document.appendChild(html);
   }
 
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") {
-      // Watching -> Not Watching: only remember if the popunder script has loaded
       if (popunderLoaded()) {
-        needRefresh = true;
-        console.log("Popunder script loaded. Page will refresh when the user returns.");
+        needRestore = true;
+        console.log("Popunder script loaded. Page will be rebuilt when the user returns.");
       } else {
         console.log("Popunder script not loaded. Doing nothing.");
       }
-    } else if (document.visibilityState === "visible" && needRefresh) {
-      // Not Watching -> Watching: clear the page, show the loader, then reload
-      needRefresh = false;
-      console.log("User returned. Showing loader and refreshing the page.");
-      showLoader();
-      // Short delay so the loader gets painted before the reload starts
-      setTimeout(function () {
-        location.reload();
-      }, 150);
+    } else if (document.visibilityState === "visible" && needRestore) {
+      needRestore = false;
+      console.log("User returned. Removing the page and restoring it without the popunder script.");
+      rebuildPage();
+      console.log("Page restored without the popunder script.");
     }
   });
 })();
