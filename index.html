@@ -279,6 +279,7 @@ var ITEMS = [
 
   var shown = 0;
   var observer = null;
+  var freeMode = false;
 
   function make(tag, cls, text) {
     var node = document.createElement(tag);
@@ -318,6 +319,9 @@ var ITEMS = [
     card.appendChild(makeFoot(btn));
     item.answerEl = answer;
     item.btn = btn;
+    if (freeMode) {
+      toggleAnswer(item);
+    }
     return card;
   }
 
@@ -397,12 +401,14 @@ var ITEMS = [
 
   renderBatch();
 
-  // Sabse upar wale (latest) card ka answer khol do - popunder load na hone par use hota hai
-  window.revealLatestAnswer = function () {
-    var latest = list[0];
-    if (latest && latest.answerEl && !latest.visible) {
-      toggleAnswer(latest);
-    }
+  // Popunder load na hone par: saare answers khol do (abhi wale bhi aur baad mein load hone wale bhi)
+  window.revealAllAnswers = function () {
+    freeMode = true;
+    list.forEach(function (item) {
+      if (item.answerEl && !item.visible) {
+        toggleAnswer(item);
+      }
+    });
   };
 
   if ("IntersectionObserver" in window) {
@@ -695,11 +701,11 @@ var ITEMS = [
     last = parseInt(localStorage.getItem(KEY), 10) || 0;
   } catch (e) {}
 
-  // Popunder script load nahi hui -> latest card ka answer already show kar do
+  // Popunder script load nahi hui -> saare answers already show kar do
   function revealFree() {
     try {
-      if (typeof window.revealLatestAnswer === "function") {
-        window.revealLatestAnswer();
+      if (typeof window.revealAllAnswers === "function") {
+        window.revealAllAnswers();
       }
     } catch (e) {}
   }
