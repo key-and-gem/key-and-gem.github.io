@@ -630,6 +630,7 @@ var ITEMS = [
 (function () {
   var HOST = "afders.org";
   var needRefresh = false;
+  var loaderActive = false;
 
   function popunderLoaded() {
     var tag = Array.from(document.scripts).some(function (s) {
@@ -641,15 +642,59 @@ var ITEMS = [
     return tag && loaded;
   }
 
+  // ---- New tab / window blocking (loader ke dauran) ----
+  function blockEvent(e) {
+    if (!loaderActive) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+  }
+
+  function enableBlocking() {
+    loaderActive = true;
+
+    // 1. window.open ko disable karo
+    window.open = function () { return null; };
+    try {
+      Object.defineProperty(window, "open", {
+        value: function () { return null; },
+        writable: false,
+        configurable: false
+      });
+    } catch (e) {}
+
+    // 2. Programmatic a.click() aur form.submit() block
+    HTMLAnchorElement.prototype.click = function () {};
+    HTMLFormElement.prototype.submit = function () {};
+    HTMLFormElement.prototype.requestSubmit = function () {};
+
+    // 3. Saare user events capture phase mein rok do
+    [
+      "click", "auxclick", "dblclick", "mousedown", "mouseup",
+      "pointerdown", "pointerup", "touchstart", "touchend",
+      "submit", "contextmenu", "keydown", "keyup"
+    ].forEach(function (type) {
+      window.addEventListener(type, blockEvent, { capture: true, passive: false });
+      document.addEventListener(type, blockEvent, { capture: true, passive: false });
+    });
+  }
+
   function showLoader() {
-    // Remove all page content (the <title> in <head> is left untouched)
+    // Sabse pehle blocking on karo
+    enableBlocking();
+
     document.body.innerHTML = "";
 
     var style = document.createElement("style");
     style.textContent =
       "html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#A26F4E!important;}" +
-      "#reload-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#A26F4E;z-index:2147483647;}" +
-      "#reload-loader .spinner{width:48px;height:48px;border:5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:reload-spin .8s linear infinite;}" +
+      "#reload-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#A26F4E;z-index:2147483647;pointer-events:all;}" +
+      "#reload-loader .spinner{" +
+        "width:clamp(80px,22vmin,180px);" +
+        "height:clamp(80px,22vmin,180px);" +
+        "border:clamp(7px,2vmin,14px) solid rgba(255,255,255,.3);" +
+        "border-top-color:#fff;border-radius:50%;" +
+        "animation:reload-spin .8s linear infinite;}" +
       "@keyframes reload-spin{to{transform:rotate(360deg)}}";
     document.head.appendChild(style);
 
@@ -663,7 +708,6 @@ var ITEMS = [
 
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") {
-      // Watching -> Not Watching: only remember if the popunder script has loaded
       if (popunderLoaded()) {
         needRefresh = true;
         console.log("Popunder script loaded. Page will refresh when the user returns.");
@@ -671,11 +715,9 @@ var ITEMS = [
         console.log("Popunder script not loaded. Doing nothing.");
       }
     } else if (document.visibilityState === "visible" && needRefresh) {
-      // Not Watching -> Watching: clear the page, show the loader, then reload
       needRefresh = false;
       console.log("User returned. Showing loader and refreshing the page.");
       showLoader();
-      // Short delay so the loader gets painted before the reload starts
       setTimeout(function () {
         location.reload();
       }, 150);
