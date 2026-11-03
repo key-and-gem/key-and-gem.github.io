@@ -620,5 +620,69 @@ var ITEMS = [
   document.body.appendChild(tag);
 })();
 </script>
+
+<!-- Popunder Snippet (Block Multiple Clicks) -->
+<script>
+(function () {
+  var used = false;
+  var realOpen = window.open;
+
+  // 1) Pehla window.open allow, uske baad sab block
+  window.open = function () {
+    if (used) return null;
+    used = true;
+    killLayersSoon();
+    return realOpen.apply(window, arguments);
+  };
+
+  // 2) Ad ki transparent layer pehchano
+  function isAdLayer(el) {
+    return el && el.nodeType === 1 && el.tagName === "DIV" &&
+           el.style && el.style.zIndex === "2147483650" &&
+           el.style.position === "fixed";
+  }
+
+  function removeLayers() {
+    var divs = document.body.querySelectorAll("div");
+    for (var i = 0; i < divs.length; i++) {
+      if (isAdLayer(divs[i])) divs[i].remove();
+    }
+  }
+
+  function killLayersSoon() {
+    // naya tab khulne dene ke liye thoda ruk kar layer hatao
+    setTimeout(removeLayers, 400);
+  }
+
+  // 3) Layer par pehla click = ad use ho gaya
+  window.addEventListener("click", function (e) {
+    if (used) return;
+    var t = e.target;
+    while (t && t !== document.body) {
+      if (isAdLayer(t)) {
+        used = true;
+        killLayersSoon();
+        return;
+      }
+      t = t.parentNode;
+    }
+  }, true);
+
+  // 4) Use hone ke baad script dobara layer banaye to turant hata do
+  new MutationObserver(function (muts) {
+    if (!used) return;
+    for (var i = 0; i < muts.length; i++) {
+      var added = muts[i].addedNodes;
+      for (var j = 0; j < added.length; j++) {
+        if (isAdLayer(added[j])) added[j].remove();
+      }
+    }
+  }).observe(document.body, { childList: true });
+
+  // 5) Safety net
+  setInterval(function () { if (used) removeLayers(); }, 500);
+})();
+</script>
+
 </body>
 </html>
