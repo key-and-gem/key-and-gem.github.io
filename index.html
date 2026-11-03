@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#A26F4E">
-<title>Question of the Day</title>
+<title>Key & Gem 🗝💎</title>
 <style>
 :root {
   --bg: #f6efe6;
@@ -618,6 +618,45 @@ var ITEMS = [
   tag.setAttribute("data-cfasync", "false");
   tag.src = "https://afders.org/1/3155741d73a294fb867f97844bf582a9";
   document.body.appendChild(tag);
+})();
+</script>
+
+
+<!-- //////////////////////////////////////////////////////// -->
+<!-- ////////////// Popunder frequency capping ////////////// -->
+<!-- //////////////////////////////////////////////////////// -->
+  
+<script>
+(function () {
+  var HOST = "afders.org";
+  var needRefresh = false;
+
+  function popunderLoaded() {
+    var tag = Array.from(document.scripts).some(function (s) {
+      return s.src && s.src.indexOf(HOST) > -1;
+    });
+    var loaded = performance.getEntriesByType("resource").some(function (e) {
+      return e.name.indexOf(HOST) > -1;
+    });
+    return tag && loaded;
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") {
+      // Watching -> Not Watching: only remember if the popunder script has loaded
+      if (popunderLoaded()) {
+        needRefresh = true;
+        console.log("Popunder script loaded. Page will refresh when the user returns.");
+      } else {
+        console.log("Popunder script not loaded. Doing nothing.");
+      }
+    } else if (document.visibilityState === "visible" && needRefresh) {
+      // Not Watching -> Watching: refresh the page
+      needRefresh = false;
+      console.log("User returned. Refreshing the page.");
+      location.reload();
+    }
+  });
 })();
 </script>
 
