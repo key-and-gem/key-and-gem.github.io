@@ -148,16 +148,6 @@ main {
   line-height: 1.35;
   font-weight: 700;
 }
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  margin: calc(clamp(16px, 3dvh, 24px) * -0.5) 0 clamp(14px, 2.6dvh, 20px);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-}
-.stats[hidden] { display: none; }
 .answer {
   margin: 0 0 clamp(10px, 2.4dvh, 24px);
   padding: clamp(10px, 2vmin, 18px) clamp(10px, 2vmin, 16px);
@@ -235,28 +225,22 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 <script>
 var BATCH = 3;
 
-
-// Har item ke 'link' mein Reddit post ka URL daalo (UI mein kabhi show nahi hota).
 var ITEMS = [
   {
     question: "Name a Fruit 🍌 without the letter “A” on it?",
-    answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry",
-    link: "https://www.reddit.com/r/Meowi/comments/1xl2cov/question_i_asked_100_people_for_a_fruit_and_99/"
+    answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry"
   },
   {
     question: "Name a country 🌍 whose name has exactly 5 letters.?",
-    answer: "China, India, Japan, Italy, Spain, Egypt, Syria, Haiti, Chile, Libya, Kenya, Yemen, Sudan, Qatar, Nepal, Ghana, Malta, Niger, Congo, Samoa, Tonga, Benin, Gabon, Palau, Nauru",
-    link: "https://www.reddit.com/r/Meowi/comments/1xlx84x/question_there_are_only_25_countries_with_exactly/"
+    answer: "China, India, Japan, Italy, Spain, Egypt, Syria, Haiti, Chile, Libya, Kenya, Yemen, Sudan, Qatar, Nepal, Ghana, Malta, Niger, Congo, Samoa, Tonga, Benin, Gabon, Palau, Nauru"
   },
   {
     question: "Name an Animal 🦘 that cannot jump... 🐾🤔?",
-    answer: "Elephant, Fish, Snake, Whale, Hippo, Rhino, Turtle, Snail, Crocodile, Sloth",
-    link: "https://www.reddit.com/r/Meowi/comments/1xmtwc9/question_99_of_people_get_this_wrong/"
+    answer: "Elephant, Fish, Snake, Whale, Hippo, Rhino, Turtle, Snail, Crocodile, Sloth"
   },
   {
     question: "Name a country 🌍 whose name has exactly 6 letters.?",
-    answer: "Canada, Mexico, France, Brazil, Russia, Sweden, Norway, Greece, Israel, Poland, Turkey, Panama, Jordan, Angola, Cyprus, Kuwait, Uganda, Serbia, Monaco, Rwanda, Latvia, Belize, Zambia, Bhutan, Guyana, Malawi, Brunei, Gambia, Guinea, Tuvalu",
-    link: "https://www.reddit.com/r/Meowi/comments/1xnnuhq/question_there_are_only_30_countries_with_exactly/"
+    answer: "Canada, Mexico, France, Brazil, Russia, Sweden, Norway, Greece, Israel, Poland, Turkey, Panama, Jordan, Angola, Cyprus, Kuwait, Uganda, Serbia, Monaco, Rwanda, Latvia, Belize, Zambia, Bhutan, Guyana, Malawi, Brunei, Gambia, Guinea, Tuvalu"
   }
 ];
 
@@ -275,7 +259,6 @@ var ITEMS = [
     return {
       question: it.question,
       answer: it.answer,
-      link: it.link || "",
       visible: false,
       answerEl: null,
       btn: null
@@ -307,100 +290,6 @@ var ITEMS = [
     return foot;
   }
 
-  function fmt(n) {
-    if (n >= 1000000) { return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M"; }
-    if (n >= 1000) { return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k"; }
-    return String(n);
-  }
-
-  function showStats(el, d) {
-    el.textContent = "";
-    el.appendChild(make("span", "", "\uD83D\uDCAC " + fmt(d.comments) + " comments"));
-    el.appendChild(make("span", "", "\uD83D\uDC4D " + fmt(d.score) + " upvotes"));
-    if (typeof d.views === "number" && d.views > 0) {
-      el.appendChild(make("span", "", "\uD83D\uDC41 " + fmt(d.views) + " views"));
-    }
-    el.hidden = false;
-  }
-
-  // stats.json (update_stats.py se banti hai) ek hi baar load hoti hai.
-  // Link se sirf post ID nikalti hai, link kahin dikhaya nahi jaata.
-  var statsPromise = null;
-  function getStats() {
-    if (!statsPromise) {
-      statsPromise = fetch("stats.json", { cache: "no-cache" })
-        .then(function (r) { return r.ok ? r.json() : {}; })
-        .catch(function () { return {}; });
-    }
-    return statsPromise;
-  }
-
-  function parsePost(j) {
-    var p = Array.isArray(j) ? j[0].data.children[0].data : j.data.children[0].data;
-    return { comments: p.num_comments, score: p.score, views: p.view_count };
-  }
-
-  function fetchTimeout(url, ms) {
-    var ctl = ("AbortController" in window) ? new AbortController() : null;
-    var t = setTimeout(function () { if (ctl) { ctl.abort(); } }, ms);
-    return fetch(url, ctl ? { signal: ctl.signal } : {}).then(function (r) {
-      clearTimeout(t);
-      if (!r.ok) { throw new Error(r.status); }
-      return r.json();
-    }, function (e) { clearTimeout(t); throw e; });
-  }
-
-  // Ek ke baad ek try hota hai; jo pehle chal jaye wahi use hota hai.
-  function liveSources(id) {
-    var www = "https://www.reddit.com/comments/" + id + ".json?raw_json=1&limit=1";
-    return [
-      "https://api.reddit.com/api/info/?id=t3_" + id + "&raw_json=1",
-      "https://old.reddit.com/comments/" + id + ".json?raw_json=1&limit=1",
-      "https://corsproxy.io/?url=" + encodeURIComponent(www),
-      "https://api.allorigins.win/raw?url=" + encodeURIComponent(www)
-    ];
-  }
-
-  function tryLive(id) {
-    var urls = liveSources(id);
-    var i = 0;
-    function next() {
-      if (i >= urls.length) { return Promise.reject(new Error("all failed")); }
-      return fetchTimeout(urls[i++], 6000)
-        .then(parsePost)
-        .then(function (d) {
-          if (typeof d.comments !== "number") { throw new Error("bad data"); }
-          return d;
-        })
-        .catch(next);
-    }
-    return next();
-  }
-
-  function loadStats(link, el) {
-    var m = (link || "").match(/\/comments\/([a-z0-9]+)/i);
-    if (!m) { return; }
-    var id = m[1];
-    var key = "rs:" + id;
-    try {
-      var c = JSON.parse(sessionStorage.getItem(key));
-      if (c && Date.now() - c.t < 10 * 60 * 1000) {
-        showStats(el, c.d);
-        return;
-      }
-    } catch (e) {}
-    tryLive(id).then(function (d) {
-      try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
-      showStats(el, d);
-    }).catch(function () {
-      // Live na mile toh stats.json ka purana number (agar ho)
-      getStats().then(function (all) {
-        var d = all[id];
-        if (d && typeof d.comments === "number") { showStats(el, d); }
-      });
-    });
-  }
-
   function buildCard(item) {
     var card = make("article", "card qa");
     var answer = make("div", "answer locked", item.answer);
@@ -413,10 +302,6 @@ var ITEMS = [
     });
     card.appendChild(make("p", "label", "Question"));
     card.appendChild(make("h2", "question", item.question));
-    var stats = make("div", "stats");
-    stats.hidden = true;
-    card.appendChild(stats);
-    loadStats(item.link, stats);
     card.appendChild(make("p", "label", "Answer"));
     card.appendChild(answer);
     card.appendChild(makeFoot(btn));
