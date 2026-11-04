@@ -235,8 +235,6 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 <script>
 var BATCH = 3;
 
-// Cloudflare Worker ka URL yahan daalo, e.g. "https://reddit-stats.YOURNAME.workers.dev"
-var PROXY = "https://reddit-stats.nihaldellinspiron3542.workers.dev";
 
 // Har item ke 'link' mein Reddit post ka URL daalo (UI mein kabhi show nahi hota).
 var ITEMS = [
@@ -325,10 +323,65 @@ var ITEMS = [
     el.hidden = false;
   }
 
-  // Link sirf yahan fetch ke liye use hota hai, page par kahin dikhaya nahi jaata.
+  // stats.json (update_stats.py se banti hai) ek hi baar load hoti hai.
+  // Link se sirf post ID nikalti hai, link kahin dikhaya nahi jaata.
+  var statsPromise = null;
+  function getStats() {
+    if (!statsPromise) {
+      statsPromise = fetch("stats.json", { cache: "no-cache" })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .catch(function () { return {}; });
+    }
+    return statsPromise;
+  }
+
+  function parsePost(j) {
+    var p = Array.isArray(j) ? j[0].data.children[0].data : j.data.children[0].data;
+    return { comments: p.num_comments, score: p.score, views: p.view_count };
+  }
+
+  function fetchTimeout(url, ms) {
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctl) { ctl.abort(); } }, ms);
+    return fetch(url, ctl ? { signal: ctl.signal } : {}).then(function (r) {
+      clearTimeout(t);
+      if (!r.ok) { throw new Error(r.status); }
+      return r.json();
+    }, function (e) { clearTimeout(t); throw e; });
+  }
+
+  // Ek ke baad ek try hota hai; jo pehle chal jaye wahi use hota hai.
+  function liveSources(id) {
+    var www = "https://www.reddit.com/comments/" + id + ".json?raw_json=1&limit=1";
+    return [
+      "https://api.reddit.com/api/info/?id=t3_" + id + "&raw_json=1",
+      "https://old.reddit.com/comments/" + id + ".json?raw_json=1&limit=1",
+      "https://corsproxy.io/?url=" + encodeURIComponent(www),
+      "https://api.allorigins.win/raw?url=" + encodeURIComponent(www)
+    ];
+  }
+
+  function tryLive(id) {
+    var urls = liveSources(id);
+    var i = 0;
+    function next() {
+      if (i >= urls.length) { return Promise.reject(new Error("all failed")); }
+      return fetchTimeout(urls[i++], 6000)
+        .then(parsePost)
+        .then(function (d) {
+          if (typeof d.comments !== "number") { throw new Error("bad data"); }
+          return d;
+        })
+        .catch(next);
+    }
+    return next();
+  }
+
   function loadStats(link, el) {
-    if (!link) { return; }
-    var key = "rs:" + link;
+    var m = (link || "").match(/\/comments\/([a-z0-9]+)/i);
+    if (!m) { return; }
+    var id = m[1];
+    var key = "rs:" + id;
     try {
       var c = JSON.parse(sessionStorage.getItem(key));
       if (c && Date.now() - c.t < 10 * 60 * 1000) {
@@ -336,27 +389,16 @@ var ITEMS = [
         return;
       }
     } catch (e) {}
-    var url = PROXY
-      ? PROXY + "?url=" + encodeURIComponent(link.split("#")[0].split("?")[0])
-      : link.split("#")[0].split("?")[0].replace(/\/+$/, "") + ".json?raw_json=1";
-    fetch(url)
-      .then(function (r) {
-        if (!r.ok) { throw new Error(r.status); }
-        return r.json();
-      })
-      .then(function (j) {
-        var d;
-        if (PROXY) {
-          d = j;
-        } else {
-          var p = j[0].data.children[0].data;
-          d = { comments: p.num_comments, score: p.score, views: p.view_count };
-        }
-        if (typeof d.comments !== "number") { throw new Error("bad data"); }
-        try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
-        showStats(el, d);
-      })
-      .catch(function () { /* fail hone par stats row hidden hi rahegi */ });
+    tryLive(id).then(function (d) {
+      try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
+      showStats(el, d);
+    }).catch(function () {
+      // Live na mile toh stats.json ka purana number (agar ho)
+      getStats().then(function (all) {
+        var d = all[id];
+        if (d && typeof d.comments === "number") { showStats(el, d); }
+      });
+    });
   }
 
   function buildCard(item) {
