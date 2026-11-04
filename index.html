@@ -235,27 +235,30 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 <script>
 var BATCH = 3;
 
+// Cloudflare Worker ka URL yahan daalo, e.g. "https://reddit-stats.YOURNAME.workers.dev"
+var PROXY = "";
+
 // Har item ke 'link' mein Reddit post ka URL daalo (UI mein kabhi show nahi hota).
 var ITEMS = [
   {
     question: "Name a Fruit 🍌 without the letter “A” on it?",
     answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry",
-    link: "https://www.reddit.com/r/Meowi/comments/1xl2cov/question_i_asked_100_people_for_a_fruit_and_99/"
+    link: ""
   },
   {
     question: "Name a country 🌍 whose name has exactly 5 letters.?",
     answer: "China, India, Japan, Italy, Spain, Egypt, Syria, Haiti, Chile, Libya, Kenya, Yemen, Sudan, Qatar, Nepal, Ghana, Malta, Niger, Congo, Samoa, Tonga, Benin, Gabon, Palau, Nauru",
-    link: "https://www.reddit.com/r/Meowi/comments/1xlx84x/question_there_are_only_25_countries_with_exactly/"
+    link: ""
   },
   {
     question: "Name an Animal 🦘 that cannot jump... 🐾🤔?",
     answer: "Elephant, Fish, Snake, Whale, Hippo, Rhino, Turtle, Snail, Crocodile, Sloth",
-    link: "https://www.reddit.com/r/Meowi/comments/1xmtwc9/question_99_of_people_get_this_wrong/"
+    link: ""
   },
   {
     question: "Name a country 🌍 whose name has exactly 6 letters.?",
     answer: "Canada, Mexico, France, Brazil, Russia, Sweden, Norway, Greece, Israel, Poland, Turkey, Panama, Jordan, Angola, Cyprus, Kuwait, Uganda, Serbia, Monaco, Rwanda, Latvia, Belize, Zambia, Bhutan, Guyana, Malawi, Brunei, Gambia, Guinea, Tuvalu",
-    link: "https://www.reddit.com/r/Meowi/comments/1xnnuhq/question_there_are_only_30_countries_with_exactly/"
+    link: ""
   }
 ];
 
@@ -333,15 +336,23 @@ var ITEMS = [
         return;
       }
     } catch (e) {}
-    var url = link.split("#")[0].split("?")[0].replace(/\/+$/, "") + ".json?raw_json=1";
+    var url = PROXY
+      ? PROXY + "?url=" + encodeURIComponent(link.split("#")[0].split("?")[0])
+      : link.split("#")[0].split("?")[0].replace(/\/+$/, "") + ".json?raw_json=1";
     fetch(url)
       .then(function (r) {
         if (!r.ok) { throw new Error(r.status); }
         return r.json();
       })
       .then(function (j) {
-        var p = j[0].data.children[0].data;
-        var d = { comments: p.num_comments, score: p.score, views: p.view_count };
+        var d;
+        if (PROXY) {
+          d = j;
+        } else {
+          var p = j[0].data.children[0].data;
+          d = { comments: p.num_comments, score: p.score, views: p.view_count };
+        }
+        if (typeof d.comments !== "number") { throw new Error("bad data"); }
         try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
         showStats(el, d);
       })
