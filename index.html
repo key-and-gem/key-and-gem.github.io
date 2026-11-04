@@ -148,6 +148,16 @@ main {
   line-height: 1.35;
   font-weight: 700;
 }
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: calc(clamp(16px, 3dvh, 24px) * -0.5) 0 clamp(14px, 2.6dvh, 20px);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.stats[hidden] { display: none; }
 .answer {
   margin: 0 0 clamp(10px, 2.4dvh, 24px);
   padding: clamp(10px, 2vmin, 18px) clamp(10px, 2vmin, 16px);
@@ -225,22 +235,27 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 <script>
 var BATCH = 3;
 
+// Har item ke 'link' mein Reddit post ka URL daalo (UI mein kabhi show nahi hota).
 var ITEMS = [
   {
     question: "Name a Fruit 🍌 without the letter “A” on it?",
-    answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry"
+    answer: "Lime, Lemon, Plum, Fig, Kiwi, Melon, Muskmelon, Honeydew, Cherry, Olive, Quince, Lychee, Litchi, Pomelo, Citron, Clementine, Persimmon, Prune, Pluot, Plumcot, Coconut, Soursop, Sweetsop, Ugli fruit, Jujube, Sloe, Blueberry, Gooseberry, Elderberry, Mulberry, Boysenberry, Lingonberry, Huckleberry, Bilberry, Cloudberry, Dewberry",
+    link: "https://www.reddit.com/r/Meowi/comments/1xl2cov/question_i_asked_100_people_for_a_fruit_and_99/"
   },
   {
     question: "Name a country 🌍 whose name has exactly 5 letters.?",
-    answer: "China, India, Japan, Italy, Spain, Egypt, Syria, Haiti, Chile, Libya, Kenya, Yemen, Sudan, Qatar, Nepal, Ghana, Malta, Niger, Congo, Samoa, Tonga, Benin, Gabon, Palau, Nauru"
+    answer: "China, India, Japan, Italy, Spain, Egypt, Syria, Haiti, Chile, Libya, Kenya, Yemen, Sudan, Qatar, Nepal, Ghana, Malta, Niger, Congo, Samoa, Tonga, Benin, Gabon, Palau, Nauru",
+    link: "https://www.reddit.com/r/Meowi/comments/1xlx84x/question_there_are_only_25_countries_with_exactly/"
   },
   {
     question: "Name an Animal 🦘 that cannot jump... 🐾🤔?",
-    answer: "Elephant, Fish, Snake, Whale, Hippo, Rhino, Turtle, Snail, Crocodile, Sloth"
+    answer: "Elephant, Fish, Snake, Whale, Hippo, Rhino, Turtle, Snail, Crocodile, Sloth",
+    link: "https://www.reddit.com/r/Meowi/comments/1xmtwc9/question_99_of_people_get_this_wrong/"
   },
   {
     question: "Name a country 🌍 whose name has exactly 6 letters.?",
-    answer: "Canada, Mexico, France, Brazil, Russia, Sweden, Norway, Greece, Israel, Poland, Turkey, Panama, Jordan, Angola, Cyprus, Kuwait, Uganda, Serbia, Monaco, Rwanda, Latvia, Belize, Zambia, Bhutan, Guyana, Malawi, Brunei, Gambia, Guinea, Tuvalu"
+    answer: "Canada, Mexico, France, Brazil, Russia, Sweden, Norway, Greece, Israel, Poland, Turkey, Panama, Jordan, Angola, Cyprus, Kuwait, Uganda, Serbia, Monaco, Rwanda, Latvia, Belize, Zambia, Bhutan, Guyana, Malawi, Brunei, Gambia, Guinea, Tuvalu",
+    link: "https://www.reddit.com/r/Meowi/comments/1xnnuhq/question_there_are_only_30_countries_with_exactly/"
   }
 ];
 
@@ -259,6 +274,7 @@ var ITEMS = [
     return {
       question: it.question,
       answer: it.answer,
+      link: it.link || "",
       visible: false,
       answerEl: null,
       btn: null
@@ -290,6 +306,48 @@ var ITEMS = [
     return foot;
   }
 
+  function fmt(n) {
+    if (n >= 1000000) { return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M"; }
+    if (n >= 1000) { return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k"; }
+    return String(n);
+  }
+
+  function showStats(el, d) {
+    el.textContent = "";
+    el.appendChild(make("span", "", "\uD83D\uDCAC " + fmt(d.comments) + " comments"));
+    el.appendChild(make("span", "", "\uD83D\uDC4D " + fmt(d.score) + " upvotes"));
+    if (typeof d.views === "number" && d.views > 0) {
+      el.appendChild(make("span", "", "\uD83D\uDC41 " + fmt(d.views) + " views"));
+    }
+    el.hidden = false;
+  }
+
+  // Link sirf yahan fetch ke liye use hota hai, page par kahin dikhaya nahi jaata.
+  function loadStats(link, el) {
+    if (!link) { return; }
+    var key = "rs:" + link;
+    try {
+      var c = JSON.parse(sessionStorage.getItem(key));
+      if (c && Date.now() - c.t < 10 * 60 * 1000) {
+        showStats(el, c.d);
+        return;
+      }
+    } catch (e) {}
+    var url = link.split("#")[0].split("?")[0].replace(/\/+$/, "") + ".json?raw_json=1";
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) { throw new Error(r.status); }
+        return r.json();
+      })
+      .then(function (j) {
+        var p = j[0].data.children[0].data;
+        var d = { comments: p.num_comments, score: p.score, views: p.view_count };
+        try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
+        showStats(el, d);
+      })
+      .catch(function () { /* fail hone par stats row hidden hi rahegi */ });
+  }
+
   function buildCard(item) {
     var card = make("article", "card qa");
     var answer = make("div", "answer locked", item.answer);
@@ -302,6 +360,10 @@ var ITEMS = [
     });
     card.appendChild(make("p", "label", "Question"));
     card.appendChild(make("h2", "question", item.question));
+    var stats = make("div", "stats");
+    stats.hidden = true;
+    card.appendChild(stats);
+    loadStats(item.link, stats);
     card.appendChild(make("p", "label", "Answer"));
     card.appendChild(answer);
     card.appendChild(makeFoot(btn));
