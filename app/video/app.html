@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Video Tool</title>
+<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/fonts.css" />
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 12 12"><polygon points="3.5,1 3.5,11 11,6"/></svg>
+    </div>
+    <span class="logo-name">Inner Circle Trader</span>
+  </div>
+  <button class="back-btn" id="back-btn">
+    <svg viewBox="0 0 12 12"><polyline points="7,2 3,6 7,10"/></svg>
+    Back
+  </button>
+</header>
+
+<div id="app">
+
+  <!-- ═══ UPLOAD ═══ -->
+  <section id="upload-screen">
+    <div class="watch">
+
+      <div class="watch-main">
+        <div class="slot slot-video" id="slot-video">
+          <input type="file" accept=".mp4,video/mp4" id="input-video" aria-label="Choose video file" />
+          <div class="slot-icon">
+            <svg class="icon-up" viewBox="0 0 24 24"><path d="M12 16V4"/><polyline points="7 9 12 4 17 9"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+            <svg class="icon-play" viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg>
+          </div>
+          <div class="slot-text">
+            <div class="slot-label">Video</div>
+            <div class="slot-hint" id="hint-video">Choose an .mp4 file</div>
+          </div>
+          <span class="slot-chip" id="chip-video">.mp4</span>
+          <div class="slot-progress"><span id="upload-progress"></span></div>
+        </div>
+
+        <h1 class="upload-title">Load your files</h1>
+
+        <div class="upload-bar">
+          <button class="proceed-btn" id="proceed-btn" disabled>Choose both files first</button>
+        </div>
+
+        <div class="upload-desc">
+          <span class="upload-eyebrow">Get started</span>
+          <p class="upload-sub">Video and transcript are required. You can choose the audio voice yourself.</p>
+        </div>
+      </div>
+
+      <aside class="watch-side">
+
+        <div class="slot slot-side" id="slot-json">
+          <input type="file" accept=".json,application/json" id="input-json" aria-label="Choose transcript file" />
+          <div class="slot-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="10 13 8 15 10 17"/><polyline points="14 13 16 15 14 17"/></svg>
+            <span class="slot-chip" id="chip-json">.json</span>
+          </div>
+          <div class="slot-text">
+            <div class="slot-label">Transcript</div>
+            <div class="slot-hint" id="hint-json">Choose a .json file</div>
+          </div>
+        </div>
+
+        <div class="slot slot-side slot-audio ready" id="slot-audio">
+          <div class="slot-icon">
+            <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <span class="slot-chip">TTS</span>
+          </div>
+          <div class="slot-text">
+            <div class="slot-label">Audio voice</div>
+            <div class="slot-hint">Reads the transcript aloud</div>
+            <select class="voice-select" id="select-voice" aria-label="Audio voice"></select>
+            <button class="voice-test" id="voice-test" type="button">Test</button>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </section>
+
+  <!-- ═══ PLAYER ═══ -->
+  <section id="player-screen">
+
+    <div class="player-col">
+      <span id="file-name" class="sr-only">—</span>
+
+      <div class="player-box">
+        <video id="main-video" preload="metadata" muted></video>
+        <div class="tap-overlay" id="tap-overlay"></div>
+        <!-- On-video controls: appear on hover (mouse) / tap (touch) -->
+        <div class="vc-wrap" id="vc-wrap">
+          <button class="vc-btn vc-side" id="vc-prev" type="button" aria-label="Previous segment">
+            <svg class="c" viewBox="0 0 24 24"><polyline points="12,6 6,12 12,18"/><polyline points="19,6 13,12 19,18"/></svg>
+          </button>
+          <button class="vc-btn vc-main pp-toggle" id="vc-pp" type="button" aria-label="Play" aria-busy="false">
+            <svg class="ic-play f" viewBox="0 0 24 24"><polygon points="8.4,5.5 19.4,12 8.4,18.5"/></svg>
+            <svg class="ic-pause f" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></svg>
+            <svg class="ic-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+          </button>
+          <button class="vc-btn vc-side" id="vc-next" type="button" aria-label="Next segment">
+            <svg class="c" viewBox="0 0 24 24"><polyline points="5,6 11,12 5,18"/><polyline points="12,6 18,12 12,18"/></svg>
+          </button>
+        </div>
+        <div class="center-icon" id="center-icon">
+          <svg id="ci-play" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+          <svg id="ci-pause" viewBox="0 0 24 24" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </div>
+        <div id="sub-wrap">
+          <span id="sub-text"></span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <!-- Play/Pause (single toggle; spinner shows while busy, clicks get queued) -->
+        <button class="c-btn pp-toggle" id="pp-btn" aria-label="Play" aria-busy="false">
+          <svg class="ic-play" id="ic-play" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+          <svg class="ic-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          <svg class="ic-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+        </button>
+
+        <!-- Scrubber -->
+        <div class="scrub-wrap" id="scrub-wrap">
+          <!-- Transcript parts ke hisaab se split dikhne wali bar (JS se mask banta hai) -->
+          <div class="seg-bar" id="seg-bar" aria-hidden="true"></div>
+          <input type="range" class="scrubber" id="scrubber" min="0" max="100" value="0" step="0.1" tabindex="-1" aria-readonly="true" aria-label="Video progress (view only)" />
+        </div>
+
+        <!-- Time -->
+        <span class="time-lbl" id="time-lbl">0:00 <em>/ 0:00</em></span>
+
+        <!-- Fullscreen toggle (slider ke upar, right end par) -->
+        <button class="fs-btn" id="fs-btn" type="button" aria-label="Fullscreen" title="Fullscreen">
+          <svg class="fs-enter" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
+          <svg class="fs-exit" viewBox="0 0 24 24"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>
+        </button>
+
+        <!-- Transcript toggle -->
+        <button class="c-btn icon-btn" id="transcript-btn" aria-label="Transcript toggle" title="Transcript show/hide">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+        </button>
+
+        <!-- Caption toggle -->
+        <button class="c-btn icon-btn" id="caption-btn" aria-label="Captions toggle" title="Captions on/off">
+          <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M7 12h4M7 15h2M13 12h4M13 15h2"/></svg>
+        </button>
+        
+        <!-- Volume toggle -->
+        <button class="c-btn icon-btn" id="volume-btn" aria-label="Volume toggle" title="Mute/Unmute">
+          <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Transcript -->
+    <div id="tr-panel">
+      <div class="tr-head">
+        <div class="tr-head-left">
+          <span class="tr-head-label">Transcript</span>
+          <span class="tr-count" id="tr-count">—</span>
+        </div>
+      </div>
+      <div id="tr-list"></div>
+    </div>
+
+  </section>
+
+</div>
+
+<!-- ES Modules: Local server zaroori hai (Live Server / npx serve .) -->
+<script type="module" src="js/upload.js"></script>
+<script type="module" src="js/player.js"></script>
+<script type="module" src="js/mainLogic.js"></script>
+<script type="module" src="js/arrowKeys.js"></script>
+</body>
+</html>
