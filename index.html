@@ -44,6 +44,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 ::selection { background: transparent; }
+/* Sirf Question aur (khula hua) Answer select/copy ho sakte hain */
+.question,
+.answer.open {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+.question::selection,
+.answer.open::selection {
+  background: rgba(201, 162, 39, 0.45);
+}
 button { touch-action: manipulation; }
 html, body { margin: 0; }
 body {
@@ -392,11 +403,18 @@ var ITEMS = [
     });
   }
 
+  // Sirf question aur khule hue answer mein selection allowed hai
+  function canSelect(target) {
+    var el = target && target.nodeType === 3 ? target.parentElement : target;
+    return !!(el && el.closest && el.closest(".question, .answer.open"));
+  }
   document.addEventListener("selectstart", function (e) {
-    e.preventDefault();
+    if (!canSelect(e.target)) {
+      e.preventDefault();
+    }
   });
   document.addEventListener("mousedown", function (e) {
-    if (e.detail > 1) {
+    if (e.detail > 1 && !canSelect(e.target)) {
       e.preventDefault();
     }
   });
