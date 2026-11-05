@@ -170,7 +170,7 @@ let _mode        = 'paused';
 let _busyTarget  = 'playing';
 let _queued      = null;
 let _busyTimer   = null;
-let _userWantsPlay = false;
+let _userWantsPlay = true;
 let _epoch       = 0;   // seek/resume/destroy pe badhta hai — purane timeouts ko stale banane ke liye
 
 /**
@@ -606,7 +606,7 @@ export function init() {
   _heartbeatOn       = false;
   _epoch++;
   _queued            = null;
-  _userWantsPlay     = false;
+  _userWantsPlay     = true;
 
   const segs = state.transcript;
   if (segs.length) {
