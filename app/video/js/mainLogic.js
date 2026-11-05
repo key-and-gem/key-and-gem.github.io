@@ -170,6 +170,7 @@ let _mode        = 'paused';
 let _busyTarget  = 'playing';
 let _queued      = null;
 let _busyTimer   = null;
+let _userWantsPlay = false;
 let _epoch       = 0;   // seek/resume/destroy pe badhta hai — purane timeouts ko stale banane ke liye
 
 /**
@@ -268,6 +269,7 @@ export function toggle() {
 
   if (_mode === 'busy') {
     _queued = _busyTarget === 'playing' ? 'pause' : 'play';
+    _userWantsPlay = _queued === 'play';
     _renderBtn();
     return;
   }
@@ -479,6 +481,7 @@ video.addEventListener('ended', () => {
  */
 export function play() {
   if (!_moduleActive) return;
+  _userWantsPlay = true;
 
   // ── Case: Resume after pause ─────────────────────────────────────────────
   if (_ttsState === 'paused') {
@@ -526,6 +529,7 @@ export function play() {
  */
 export function pause() {
   if (!_moduleActive) return;
+  _userWantsPlay = false;
 
   // ── TTS chal rahi hai — pehle use pause karo ─────────────────────────────
   if (_ttsState === 'playing') {
@@ -573,13 +577,17 @@ export function seekToSegment(idx) {
   _resumeIndex       = 0;
   _lastCharIndex     = 0;
 
-  // Video ko segment start par le jao, pause karo — TTS onstart play karegi
   video.currentTime = segs[idx].start;
   video.pause();
 
-  // TTS shuru karo → onstart → video.play()
+  if (!_userWantsPlay) {
+    _stopHeartbeat();
+    _setMode('paused');
+    return;
+  }
+
   _speakFrom(segs[idx].text, 0, idx);
-  _setMode('busy', 'playing'); // TTS start hone ka wait
+  _setMode('busy', 'playing');
 }
 
 /**
@@ -598,6 +606,7 @@ export function init() {
   _heartbeatOn       = false;
   _epoch++;
   _queued            = null;
+  _userWantsPlay     = false;
 
   const segs = state.transcript;
   if (segs.length) {
