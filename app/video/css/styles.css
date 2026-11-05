@@ -1,0 +1,658 @@
+/* css/styles.css */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design Tokens ── */
+:root {
+  --bg:         #0f0f0f;
+  --bg-alt:     #0f0f0f;
+  --surface:    #272727;
+  --surface-hi: #3f3f3f;
+  --border:     rgba(255,255,255,0.1);
+  --border-md:  rgba(255,255,255,0.2);
+  --text-1:     #f1f1f1;
+  --text-2:     #aaaaaa;
+  --text-3:     #717171;
+  --accent:     #ff0000;
+  --accent-bg:  rgba(255,0,0,0.12);
+  --accent-brd: rgba(255,0,0,0.3);
+  --link:       #3ea6ff;
+  --green:      #5ec487;
+  --green-bg:   rgba(94,196,135,0.1);
+  --green-brd:  rgba(94,196,135,0.3);
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+header {
+  padding: 0 24px;
+  height: 56px;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.logo { display: flex; align-items: center; gap: 6px; }
+.logo-icon {
+  width: 32px; height: 22px; border-radius: 6px;
+  background: var(--accent); border: none;
+  display: grid; place-items: center;
+}
+.logo-icon svg { width: 12px; height: 12px; fill: #fff; }
+.logo-name { font-size: 19px; font-weight: 600; color: var(--text-1); letter-spacing: -0.04em; white-space: nowrap; }
+header .back-btn { margin-left: auto; }
+/* Back button in header only makes sense while the player is open */
+header:has(+ #app #upload-screen:not([style*="none"])) .back-btn { display: none; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.logo-tag {
+  font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 20px;
+  background: var(--surface); color: var(--text-3); letter-spacing: 0.05em;
+  text-transform: uppercase; margin-left: 2px;
+}
+
+/* ── App Shell ── */
+#app {
+  flex: 1; display: flex;
+  align-items: center; justify-content: center;
+  padding: 36px 28px;
+}
+
+/* ═══ UPLOAD SCREEN ═══ */
+#app:has(#upload-screen:not([style*="none"])) { align-items: flex-start; padding: 24px 24px 56px; }
+
+#upload-screen { width: 100%; max-width: 1280px; }
+.watch { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 24px; align-items: start; }
+.watch-main { min-width: 0; }
+.watch-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.slot {
+  position: relative; display: flex; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.slot, .voice-test, .voice-select, .proceed-btn {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+.slot, .voice-test, .proceed-btn { -webkit-user-select: none; user-select: none; }
+.slot input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 2; }
+.slot:has(input:focus-visible) { outline: 2px solid var(--link); outline-offset: 2px; }
+
+.slot-icon svg { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.slot-label { font-weight: 600; color: var(--text-1); }
+.slot-hint { color: var(--text-2); }
+.slot-chip {
+  position: absolute; font-size: 12px; font-weight: 500; line-height: 1;
+  padding: 3px 5px; border-radius: 4px; background: rgba(0,0,0,0.8); color: #fff;
+  pointer-events: none;
+}
+
+.slot-video {
+  aspect-ratio: 16 / 9; border-radius: 12px; background: #000;
+  border: 1px solid var(--border-md);
+  flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  text-align: center; overflow: hidden;
+}
+.slot-video .slot-icon {
+  width: 112px; height: 112px; border-radius: 50%; background: var(--surface);
+  display: grid; place-items: center; color: var(--text-1);
+  transition: width 0.2s, height 0.2s, border-radius 0.2s, background 0.2s;
+}
+.slot-video .slot-icon svg { width: 48px; height: 48px; }
+.slot-video .icon-play { display: none; }
+.slot-video.ready .icon-up { display: none; }
+.slot-video.ready .icon-play { display: block; width: 40px; height: 40px; fill: #fff; stroke: none; }
+.slot-video.ready .slot-icon { width: 100px; height: 70px; border-radius: 20px; background: var(--accent); }
+.slot-video .slot-text { max-width: 80%; }
+.slot-video .slot-label { font-size: 18px; margin-bottom: 4px; }
+.slot-video .slot-hint { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-video .slot-chip { right: 12px; bottom: 16px; }
+.slot-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,0.2); }
+.slot-progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s ease; }
+
+.upload-title { font-size: 20px; font-weight: 600; line-height: 1.4; color: var(--text-1); margin: 14px 0 12px; }
+.upload-bar { display: flex; align-items: center; gap: 12px; }
+.upload-desc { margin-top: 16px; background: var(--surface); border-radius: 12px; padding: 12px 14px; }
+.upload-eyebrow { display: block; font-size: 14px; font-weight: 500; color: var(--link); margin-bottom: 4px; }
+.upload-sub { font-size: 14px; line-height: 1.5; color: var(--text-1); }
+
+.slot-side { gap: 12px; align-items: flex-start; }
+.slot-side .slot-icon {
+  position: relative; width: 168px; height: 94px; border-radius: 8px; flex-shrink: 0;
+  background: var(--surface); display: grid; place-items: center; color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+}
+.slot-side .slot-icon svg { width: 32px; height: 32px; }
+.slot-side.ready .slot-icon { color: var(--text-1); }
+.slot-side .slot-chip { right: 4px; bottom: 4px; }
+.slot-side .slot-text { flex: 1; min-width: 0; padding-top: 2px; }
+.slot-side .slot-label { font-size: 14px; line-height: 1.4; }
+.slot-side .slot-hint { font-size: 12px; line-height: 1.5; word-break: break-word; }
+.slot-audio { cursor: default; }
+
+.voice-select {
+  width: 100%; margin-top: 8px; padding: 8px 10px;
+  background: var(--surface); color: var(--text-1);
+  border: 1px solid transparent; border-radius: 8px;
+  font-family: inherit; font-size: 13px; cursor: pointer; text-overflow: ellipsis;
+}
+.voice-select:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+.voice-test {
+  margin-top: 8px; min-width: 64px; height: 32px; padding: 0 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-hi); color: var(--text-1);
+  border: none; border-radius: 16px;
+  font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background 0.15s;
+}
+.voice-test:active:not(:disabled) { background: #505050; }
+.voice-test:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.voice-test:disabled, .voice-select:disabled { opacity: 0.6; cursor: not-allowed; }
+.spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.proceed-btn {
+  height: 36px; padding: 0 18px; border-radius: 18px; border: none;
+  background: var(--text-1); color: #0f0f0f; font-family: inherit;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background 0.15s;
+}
+.proceed-btn:disabled { background: var(--surface); color: var(--text-3); cursor: not-allowed; }
+.proceed-btn:not(:disabled):active { background: #d9d9d9; }
+.proceed-btn:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+@media (hover: hover) {
+  .slot-video:hover { background: #151515; }
+  .slot-side:hover .slot-icon { background: var(--surface-hi); }
+  .voice-test:hover:not(:disabled) { background: #505050; }
+  .proceed-btn:not(:disabled):hover { background: #d9d9d9; }
+}
+@media (pointer: coarse) {
+  .voice-test { height: 44px; min-width: 80px; border-radius: 22px; }
+  .voice-select { min-height: 44px; font-size: 16px; }
+  .proceed-btn { height: 44px; border-radius: 22px; }
+}
+@media (max-width: 960px) {
+  .watch { grid-template-columns: minmax(0, 1fr); }
+  .slot-side .slot-icon { width: 140px; height: 79px; }
+}
+@media (max-width: 520px) {
+  .proceed-btn { width: 100%; }
+  #app:has(#upload-screen:not([style*="none"])) { padding: 12px 12px 40px; }
+  .slot-video .slot-icon { width: 76px; height: 76px; }
+  .slot-video.ready .slot-icon { width: 80px; height: 56px; border-radius: 16px; }
+  .slot-video .slot-icon svg { width: 34px; height: 34px; }
+  .slot-video.ready .icon-play { width: 28px; height: 28px; }
+  .slot-side .slot-icon { width: 112px; height: 63px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slot-progress span, .slot-video .slot-icon { transition: none; }
+  .spinner { animation-duration: 2s; }
+}
+
+/* ═══ PLAYER SCREEN (YouTube-inspired) ═══ */
+#player-screen {
+  display: none; width: 100%; max-width: 1440px;
+  flex-direction: row; gap: 24px;
+  height: calc(100vh - 56px - 72px);
+}
+#player-screen.active { display: flex; }
+
+.player-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.back-btn {
+  display: flex; align-items: center; gap: 5px; padding: 7px 14px;
+  border-radius: 20px; border: none; background: var(--surface);
+  color: var(--text-1); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background 0.15s; white-space: nowrap; flex-shrink: 0;
+}
+.back-btn:hover { background: var(--surface-hi); }
+.back-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; }
+
+/* Video box */
+.player-box {
+  background: #000;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border: none;
+  flex-shrink: 0;
+}
+
+#main-video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.tap-overlay { position: absolute; inset: 0; cursor: pointer; z-index: 2; }
+
+.center-icon {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: grid; place-items: center;
+  pointer-events: none; opacity: 1; transition: opacity 0.2s; z-index: 3;
+}
+.center-icon.hide { opacity: 0; }
+.center-icon svg { width: 20px; height: 20px; fill: #fff; margin-left: 2px; }
+
+/* Subtitle */
+#sub-wrap {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  max-width: 86%; z-index: 4; pointer-events: none; text-align: center;
+}
+#sub-text {
+  display: inline; background: rgba(14,15,19,0.82);
+  color: #f0f0f5; font-size: 14px; line-height: 1.6;
+  padding: 5px 14px; border-radius: 7px;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  opacity: 0; transition: opacity 0.18s;
+}
+#sub-text.on { opacity: 1; }
+
+/* Controls — overlaid YouTube-style bottom bar.
+   .controls is a flow sibling that comes right after .player-box; pulling it
+   up with a negative margin lets it sit visually on top of the video frame
+   (later-painted siblings render above earlier ones) without touching the
+   existing DOM structure or any JS logic/IDs. */
+.controls {
+  position: relative;
+  z-index: 5;
+  margin-top: -64px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0) 100%);
+  border: none;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  padding: 22px 12px 8px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  pointer-events: none;
+}
+.controls > * { pointer-events: auto; }
+
+.c-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: transparent;
+  display: grid; place-items: center; cursor: pointer;
+  transition: background 0.15s, transform 0.1s; flex-shrink: 0;
+  color: #fff;
+}
+.c-btn:hover { background: rgba(255,255,255,0.12); }
+.c-btn:active { transform: scale(0.91); }
+.c-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.c-btn.icon-btn svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.c-btn.on { background: rgba(255,0,0,0.25); color: var(--accent); }
+
+.c-btn:disabled {
+  background-color: transparent;
+  color: rgba(255,255,255,0.35);
+  opacity: 0.5;
+}
+
+/* Transcript / captions / volume buttons hidden from the UI (kept in DOM, so nothing in JS breaks) */
+#transcript-btn, #caption-btn, #volume-btn { display: none; }
+
+.scrub-wrap {
+  order: -1; flex-basis: 100%;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 4px;
+}
+
+.scrubber {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; border-radius: 2px; outline: none; cursor: pointer;
+  --f: 0%;
+  background: linear-gradient(to right, var(--accent) var(--f), rgba(255,255,255,0.3) var(--f));
+  transition: height 0.1s;
+}
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: 2px solid #fff;
+  transition: transform 0.1s;
+}
+.scrubber:hover { height: 5px; }
+.scrubber:hover::-webkit-slider-thumb { transform: scale(1.25); }
+
+.time-lbl {
+  font-size: 12px; font-weight: 500;
+  color: #fff; white-space: nowrap; min-width: 86px;
+}
+.time-lbl em { color: rgba(255,255,255,0.65); font-style: normal; }
+
+/* ═══ TRANSCRIPT PANEL ═══ */
+#tr-panel {
+  height: 740px; width: 300px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: width 0.25s ease, opacity 0.25s ease, border-color 0.25s ease, padding 0.25s ease;
+}
+#tr-panel.collapsed {
+  width: 0;
+  opacity: 0;
+  border-color: transparent;
+  pointer-events: none;
+}
+
+.tr-head {
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; background: var(--surface);
+}
+.tr-head-left { display: flex; align-items: center; gap: 8px; }
+.tr-head-label { font-size: 11px; font-weight: 600; color: var(--text-1); letter-spacing: 0.05em; text-transform: uppercase; }
+.tr-count {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-3); background: var(--bg-alt); padding: 2px 6px;
+  border-radius: 4px; border: 1px solid var(--border);
+}
+
+#tr-list {
+  flex: 1; overflow-y: auto; padding: 6px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+#tr-list::-webkit-scrollbar { width: 3px; }
+#tr-list::-webkit-scrollbar-track { background: transparent; }
+#tr-list::-webkit-scrollbar-thumb { background: var(--surface-hi); border-radius: 2px; }
+
+.tr-seg {
+  padding: 9px 10px; border-radius: var(--r-sm); cursor: pointer;
+  display: flex; gap: 9px; align-items: flex-start;
+  border: 1px solid transparent; transition: background 0.12s, border-color 0.12s;
+}
+.tr-seg:hover { background: var(--surface); }
+.tr-seg.active { background: var(--accent-bg); border-color: var(--accent-brd); }
+
+.tr-ts {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-3); white-space: nowrap; padding-top: 2px;
+  flex-shrink: 0; min-width: 32px; transition: color 0.12s;
+}
+.tr-seg.active .tr-ts { color: var(--accent); }
+
+.tr-body { font-size: 12px; line-height: 1.65; color: var(--text-2); transition: color 0.12s; }
+.tr-seg.active .tr-body { color: var(--text-1); }
+
+/* ── Responsive player layout ──
+   The video stays a proper 16:9 widescreen frame no matter the window size:
+   side-by-side with the transcript on wide screens, stacked on narrow ones.
+   Pure CSS — no JS, no logic change — and scoped to #player-screen only,
+   never the upload screen. */
+@media (max-width: 960px) {
+  #player-screen { flex-direction: column; height: auto; }
+  #tr-panel { width: 100%; height: 320px; }
+  #tr-panel.collapsed { width: 100%; height: 0; }
+}
+
+/* Short, wide viewports (phone/tablet physically held sideways, or a squat
+   browser window): size the 16:9 frame from the available height instead of
+   full width, so it still shows wide and never gets taller than the screen. */
+@media (max-height: 520px) and (orientation: landscape) {
+  #player-screen.active { height: 100vh; flex-direction: row; }
+  #player-screen.active .player-col { height: 100%; justify-content: center; container-type: size; }
+  #player-screen.active .player-box { width: auto; height: 100%; max-height: calc(100vh - 20px); max-width: 100%; aspect-ratio: 16/9; flex-shrink: 1; }
+  @supports (width: 1cqw) {
+    /* Fit 16:9 inside the column: width limited by BOTH available height and width */
+    #player-screen.active .player-box { width: min(100cqw, calc(100cqh * 16 / 9)); height: auto; max-height: 100cqh; }
+  }
+  #player-screen.active #tr-panel { height: 100%; width: 260px; flex: 0 0 260px; }
+  #player-screen.active #tr-panel.collapsed { width: 0; flex-basis: 0; }
+}
+
+/* ── Ignore device auto-rotate on the player screen ──
+   The player should always read as a wide/horizontal screen — width greater
+   than height — no matter which way the device is actually being held.
+   Whenever the viewport itself is taller than it is wide (a real portrait
+   orientation) AND the player is open, the *entire page* — header included —
+   is rotated 90° with a pure CSS transform and resized to fill the viewport,
+   so the logo, the Back button and the player all rotate together and stay
+   visible/usable. This only ever fires while #player-screen is .active — the
+   upload screen is completely unaffected and still follows the device
+   normally. Pure CSS, no JS, no logic change. */
+@media (orientation: portrait) {
+  /* The rotated box is sized from the real viewport (with a dvh/dvw fallback
+     for mobile browsers whose UI chrome makes plain vh/vw unreliable), and
+     everything inside it fills via flex/percentage — not fixed px math — so
+     it always fits exactly, on any screen size, with nothing pushed outside. */
+  body:has(#player-screen.active) {
+    position: fixed;
+    inset: 0;
+    width: 100vh;
+    height: 100vw;
+    width: 100dvh;
+    height: 100dvw;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    transform-origin: top left;
+    transform: rotate(90deg) translateY(-100%);
+    overflow: hidden;
+    z-index: 1000;
+  }
+  body:has(#player-screen.active) header { height: 40px; min-height: 0; padding: 0 14px; flex-shrink: 0; }
+  body:has(#player-screen.active) .logo-name { font-size: 15px; }
+  body:has(#player-screen.active) .logo-icon { width: 26px; height: 18px; }
+  body:has(#player-screen.active) header .back-btn { padding: 5px 10px; font-size: 12px; }
+
+  body:has(#player-screen.active) #app {
+    padding: 8px 10px;
+    min-height: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  body:has(#player-screen.active) #player-screen.active {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    flex-direction: row;
+    gap: 10px;
+  }
+  body:has(#player-screen.active) #player-screen.active .player-col {
+    flex: 1 1 auto; min-width: 0; min-height: 0; height: 100%;
+    justify-content: center; gap: 6px; overflow: hidden;
+    container-type: size;
+  }
+  body:has(#player-screen.active) #player-screen.active .player-box {
+    width: auto; height: 100%; max-height: 100%; aspect-ratio: 16/9;
+    flex-shrink: 1; flex-grow: 0; margin: 0 auto; max-width: 100%;
+  }
+  @supports (width: 1cqw) {
+    body:has(#player-screen.active) #player-screen.active .player-box {
+      width: min(100cqw, calc(100cqh * 16 / 9)); height: auto; max-height: 100cqh;
+    }
+  }
+  body:has(#player-screen.active) #player-screen.active .controls { padding: 14px 10px 6px; }
+  body:has(#player-screen.active) #player-screen.active #tr-panel {
+    width: 240px; flex: 0 0 240px; height: 100%; min-height: 0;
+  }
+  body:has(#player-screen.active) #player-screen.active #tr-panel.collapsed {
+    width: 0; flex-basis: 0; height: 100%;
+  }
+}
+/* ── Touch fix: no "stuck selected" flash on buttons / scrubber ──
+   Removes the browser tap highlight + text/callout selection on all
+   interactive controls, and stops sticky :hover styles on touch devices. */
+button, input[type="range"], .c-btn, .back-btn, .scrub-wrap, .tap-overlay, .center-icon {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.scrubber { touch-action: none; }
+button:focus:not(:focus-visible), .scrubber:focus:not(:focus-visible) { outline: none; }
+
+@media (hover: none) {
+  .c-btn:hover { background: transparent; }
+  .c-btn.on:hover { background: rgba(255,0,0,0.25); }
+  .back-btn:hover { background: var(--surface); }
+  .scrubber:hover { height: 3px; }
+  .scrubber:hover::-webkit-slider-thumb { transform: none; }
+}
+
+/* ── Single Play/Pause toggle: play / pause / busy-spinner ── */
+.pp-toggle .ic-pause, .pp-toggle .ic-spin { display: none; }
+.pp-toggle.playing .ic-play  { display: none; }
+.pp-toggle.playing .ic-pause { display: block; }
+.pp-toggle.loading .ic-play, .pp-toggle.loading .ic-pause { display: none; }
+.pp-toggle.loading .ic-spin {
+  display: block; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round;
+  stroke-dasharray: 38 100; opacity: 0.7;
+  animation: pp-spin 0.8s linear infinite;
+}
+
+
+@keyframes pp-spin { to { transform: rotate(360deg); } }
+
+/* Video ke beech wala play/pause icon hata diya + video par click se play/pause nahi hoga */
+.center-icon { display: none !important; }
+.tap-overlay { pointer-events: auto; cursor: default; }
+
+/* ── On-video controls: prev / play-pause / next (YouTube-style) ── */
+.vc-wrap {
+  position: absolute; inset: 0 0 64px 0; z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+  gap: clamp(24px, 12%, 120px);
+  pointer-events: none;
+}
+.vc-btn {
+  border: none; border-radius: 50%; padding: 0;
+  background: rgba(0,0,0,0.55); color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.1s, background 0.15s;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.player-box.show-ctrl .vc-btn { opacity: 1; pointer-events: auto; }
+.vc-btn:active { transform: scale(0.92); }
+.vc-main { width: 88px; height: 88px; }
+.vc-side { width: 68px; height: 68px; }
+.vc-btn svg { width: 52%; height: 52%; fill: currentColor; stroke: none; }
+.vc-main svg { width: 50%; height: 50%; }
+@media (hover: hover) { .vc-btn:hover { background: rgba(0,0,0,0.75); } }
+@media (max-width: 600px), (max-height: 520px) {
+  .vc-main { width: 66px; height: 66px; }
+  .vc-side { width: 50px; height: 50px; }
+  .vc-wrap { inset: 0 0 52px 0; gap: clamp(16px, 8%, 48px); }
+}
+@media (prefers-reduced-motion: reduce) { .vc-btn { transition: none; } }
+
+/* ── Controls visibility: buttons + scrubber + time dikhte/chhupte ek saath ── */
+/* Video halka dark jab on-video buttons dikhein */
+.player-box::before {
+  content: ''; position: absolute; inset: 0; z-index: 1;
+  background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.player-box.show-ctrl::before { opacity: 1; }
+
+/* Control bar ka play/pause button sirf UI se hata diya (DOM mein hai, logic same) */
+#pp-btn { display: none; }
+
+/* Time ab slider ke upar, alag row mein */
+.time-lbl { order: -2; flex-basis: 100%; padding-left: 2px; font-size: 13px; }
+
+/* Control bar tabhi dikhe jab on-video buttons dikh rahe hon */
+.controls { transition: opacity 0.2s; }
+.player-box:not(.show-ctrl) + .controls { opacity: 0; }
+.player-box:not(.show-ctrl) + .controls > * { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .controls, .player-box::before { transition: none; } }
+.controls { margin-top: -70px; } /* player-col ke 12px gap + bar height 58px */
+
+/* On-video icons: svg exactly button ke center mein */
+.vc-btn svg { display: block; margin: 0; }
+.vc-btn.pp-toggle.loading .ic-spin, .vc-btn.pp-toggle.playing .ic-pause { display: block; }
+
+/* On-video icon style "D": chevron rewind/forward + rounded solid play/pause */
+.vc-btn svg.c { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.vc-btn svg.f { fill: currentColor; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+
+/* On-video buttons ko player ke exact vertical center mein rakho (bottom bar ke liye jagah nahi chhodni) */
+.vc-wrap, .vc-wrap { inset: 0 !important; }
+
+/* Slider read-only: sirf progress dikhata hai, touch/click/drag nahi */
+.scrubber { pointer-events: none !important; cursor: default; touch-action: auto; }
+.scrub-wrap { pointer-events: none !important; }
+.scrubber:hover { height: 3px; }
+.scrubber:hover::-webkit-slider-thumb { transform: none; }
+
+/* ── Fullscreen toggle button (time row ke right end par) ── */
+.time-lbl { flex: 1 1 auto; min-width: 0; }
+.fs-btn {
+  order: -2; flex: 0 0 auto;
+  width: 36px; height: 36px; margin: -10px 0 -10px 8px; padding: 0;
+  border: none; border-radius: 50%; background: transparent; color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.fs-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fs-btn .fs-exit { display: none; }
+.fs-btn.is-fs .fs-enter { display: none; }
+.fs-btn.is-fs .fs-exit { display: block; }
+.fs-btn:active { transform: scale(0.9); }
+@media (hover: hover) { .fs-btn:hover { background: rgba(255,255,255,0.14); } }
+
+/* Fullscreen mode (native fullscreen + iPhone jaisa fallback dono ke liye) */
+.player-col.is-fs {
+  background: #000; justify-content: center; gap: 12px;
+  container-type: size; overflow: hidden; padding: 0; margin: 0;
+}
+.player-col.pseudo-fs { position: fixed; inset: 0; z-index: 3000; }
+.player-col.is-fs .player-box {
+  width: min(100cqw, calc(100cqh * 16 / 9)); height: auto; max-height: 100cqh; max-width: none;
+  aspect-ratio: 16 / 9; margin: 0 auto; border-radius: 0; flex: 0 0 auto;
+}
+.player-col.is-fs .controls {
+  width: min(100cqw, calc(100cqh * 16 / 9)); margin-left: auto; margin-right: auto; border-radius: 0;
+}
+
+/* Queue register / video loading: toggle disabled + spinner (spinner controls chhupne par bhi dikhta rahe) */
+.pp-toggle:disabled { cursor: default; }
+.pp-toggle.loading:disabled { opacity: 1; color: #fff; }
+.player-box .vc-btn.pp-toggle.loading { opacity: 1; }
+
+/* ── Slider transcript parts ke hisaab se split (seg-bar) ── */
+.scrub-wrap { position: relative; }
+.scrubber { position: relative; z-index: 1; }
+.seg-bar {
+  display: none;
+  position: absolute; left: 0; right: 0; top: 50%; height: 5px;
+  transform: translateY(-50%);
+  --f: 0%;
+  background: linear-gradient(to right, var(--accent) var(--f), rgba(255,255,255,0.3) var(--f));
+  border-radius: 2px; pointer-events: none;
+}
+.scrub-wrap.has-segs .seg-bar { display: block; }
+/* Split bar dikh rahi ho toh slider ka apna track chhupao (thumb dikhta rahe) */
+.scrub-wrap.has-segs .scrubber { background: transparent !important; }
+
+
+/* ── Controls hide hone par mouse cursor bhi hide (mouse hilate hi dono wapas aate hain) ── */
+.player-box:not(.show-ctrl),
+.player-box:not(.show-ctrl) *,
+.player-box:not(.show-ctrl) + .controls,
+.player-box:not(.show-ctrl) + .controls * { cursor: none !important; }
