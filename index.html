@@ -464,18 +464,13 @@ var ITEMS = [
     document.body.appendChild(tag);
   }
 
-  if (!last) {
-    if (save("fresh")) {
-      return;
-    }
-    loadPopunder();
-    return;
+  // Purane "fresh" (ad-free) wale users ko bhi ab new user ki tarah treat karo
+  if (mode === "fresh") {
+    last = 0;
   }
 
-  if (Date.now() - last < COOLDOWN) {
-    if (mode !== "fresh") {
-      revealFree();
-    }
+  if (last && Date.now() - last < COOLDOWN) {
+    revealFree();
     return;
   }
 
