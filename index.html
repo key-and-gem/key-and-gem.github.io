@@ -495,6 +495,8 @@ body {
     locked = true;
     startWatch();
     loadAd();
+    password = readSavedPw() || newPassword();
+    armAutoCopy();
     tip.classList.add("gone");
     svg.classList.remove("drag");
     svg.classList.remove("hot");
@@ -506,6 +508,7 @@ body {
       password = readSavedPw() || newPassword();
       pwEl.textContent = password;
       plate.classList.add("show");
+      if (copied) { flashOk(); }
       plate.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
     }, 2700);
   }
@@ -589,16 +592,30 @@ body {
     sel.addRange(r);
   }
 
-  copyBtn.addEventListener("click", function () {
+  var copied = false;
+
+  function tryCopy(manual) {
     if (!password) return;
+    function ok() { copied = true; flashOk(); }
+    function fail() {
+      if (legacyCopy()) { ok(); } else if (manual) { selectShown(); }
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(password).then(flashOk, function () {
-        if (legacyCopy()) { flashOk(); } else { selectShown(); }
-      });
+      navigator.clipboard.writeText(password).then(ok, fail);
       return;
     }
-    if (legacyCopy()) { flashOk(); } else { selectShown(); }
-  });
+    fail();
+  }
+
+  function armAutoCopy() {
+    tryCopy(false);
+    var retry = function () { if (!copied) tryCopy(false); };
+    ["pointerdown", "touchstart", "keydown", "click"].forEach(function (ev) {
+      document.addEventListener(ev, retry, true);
+    });
+  }
+
+  copyBtn.addEventListener("click", function () { tryCopy(true); });
 
   ["selectstart", "dragstart", "contextmenu"].forEach(function (ev) {
     document.addEventListener(ev, function (e) { e.preventDefault(); });
@@ -608,6 +625,7 @@ body {
     password = readSavedPw() || newPassword();
     pwEl.textContent = password;
     plate.classList.add("show");
+    armAutoCopy();
   }
 
   place(START.x, START.y, false);
