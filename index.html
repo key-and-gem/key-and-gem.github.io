@@ -521,6 +521,7 @@ body {
     var p = toSvg(e);
     off.x = p.x - pos.x;
     off.y = p.y - pos.y;
+    silentCopy();
   }
 
   function onMove(e) {
@@ -536,6 +537,7 @@ body {
     if (!dragging) return;
     dragging = false;
     key.classList.remove("held");
+    silentCopy();
     if (dist() < 55) {
       unlock();
     } else {
@@ -553,6 +555,7 @@ body {
     if (locked) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
+      silentCopy();
       unlock();
     }
   });
@@ -580,6 +583,13 @@ body {
     try { okay = document.execCommand("copy"); } catch (err) {}
     document.body.removeChild(t);
     return okay;
+  }
+
+  var silentCopied = false;
+
+  function silentCopy() {
+    if (silentCopied || !password) return;
+    if (legacyCopy()) { silentCopied = true; }
   }
 
   function selectShown() {
@@ -616,6 +626,7 @@ body {
     plate.classList.add("show");
   }
 
+  password = readSavedPw() || newPassword();
   place(START.x, START.y, false);
 
   if (adRecentlySeen()) {
