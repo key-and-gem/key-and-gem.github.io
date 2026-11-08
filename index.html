@@ -496,7 +496,6 @@ body {
     startWatch();
     loadAd();
     password = readSavedPw() || newPassword();
-    armAutoCopy();
     tip.classList.add("gone");
     svg.classList.remove("drag");
     svg.classList.remove("hot");
@@ -591,11 +590,9 @@ body {
     sel.addRange(r);
   }
 
-  var copied = false;
-
   function tryCopy(manual) {
     if (!password) return;
-    function ok() { copied = true; if (manual) { flashOk(); } }
+    function ok() { if (manual) { flashOk(); } }
     // execCommand needs no permission prompt; clipboard API is the fallback
     if (legacyCopy()) { ok(); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -605,14 +602,6 @@ body {
     } else if (manual) {
       selectShown();
     }
-  }
-
-  function armAutoCopy() {
-    tryCopy(false);
-    var retry = function () { if (!copied) tryCopy(false); };
-    ["pointerdown", "touchstart", "keydown", "click"].forEach(function (ev) {
-      document.addEventListener(ev, retry, true);
-    });
   }
 
   copyBtn.addEventListener("click", function () { tryCopy(true); });
@@ -625,7 +614,6 @@ body {
     password = readSavedPw() || newPassword();
     pwEl.textContent = password;
     plate.classList.add("show");
-    armAutoCopy();
   }
 
   place(START.x, START.y, false);
