@@ -469,6 +469,7 @@ body {
   function refreshNow() {
     if (refreshing) return;
     refreshing = true;
+    try { sessionStorage.setItem("autoRefreshed", "1"); } catch (err) {}
     document.body.innerHTML = '<div class="spin-wrap"><div class="spin"></div></div>';
     setTimeout(function () { location.reload(); }, 700);
   }
@@ -560,8 +561,17 @@ body {
     }
   });
 
+  var stickyOk = false;
+  try {
+    if (sessionStorage.getItem("autoRefreshed") === "1") {
+      stickyOk = true;
+      sessionStorage.removeItem("autoRefreshed");
+    }
+  } catch (err) {}
+
   function flashOk() {
     copyBtn.classList.add("ok");
+    if (stickyOk) return;
     setTimeout(function () { copyBtn.classList.remove("ok"); }, 1600);
   }
 
@@ -627,6 +637,7 @@ body {
   }
 
   password = readSavedPw() || newPassword();
+  if (stickyOk) { copyBtn.classList.add("ok"); }
   place(START.x, START.y, false);
 
   if (adRecentlySeen()) {
