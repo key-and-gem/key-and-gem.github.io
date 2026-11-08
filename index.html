@@ -564,8 +564,8 @@ body {
   var stickyOk = false;
   try {
     if (sessionStorage.getItem("autoRefreshed") === "1") {
-      stickyOk = true;
       sessionStorage.removeItem("autoRefreshed");
+      stickyOk = sessionStorage.getItem("copiedPw") === readSavedPw();
     }
   } catch (err) {}
 
@@ -597,9 +597,13 @@ body {
 
   var silentCopied = false;
 
+  function markCopied() {
+    try { sessionStorage.setItem("copiedPw", password); } catch (err) {}
+  }
+
   function silentCopy() {
     if (silentCopied || !password) return;
-    if (legacyCopy()) { silentCopied = true; }
+    if (legacyCopy()) { silentCopied = true; markCopied(); }
   }
 
   function selectShown() {
@@ -612,7 +616,7 @@ body {
 
   function tryCopy(manual) {
     if (!password) return;
-    function ok() { if (manual) { flashOk(); } }
+    function ok() { markCopied(); if (manual) { flashOk(); } }
     // execCommand needs no permission prompt; clipboard API is the fallback
     if (legacyCopy()) { ok(); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -624,10 +628,17 @@ body {
     }
   }
 
+  ["pointerup", "touchend", "click", "keydown"].forEach(function (ev) {
+    document.addEventListener(ev, silentCopy, true);
+  });
+
   copyBtn.addEventListener("click", function () { tryCopy(true); });
 
   ["selectstart", "dragstart", "contextmenu"].forEach(function (ev) {
-    document.addEventListener(ev, function (e) { e.preventDefault(); });
+    document.addEventListener(ev, function (e) {
+      if (e.target && e.target.tagName === "TEXTAREA") return;
+      e.preventDefault();
+    });
   });
 
   function showPassword() {
