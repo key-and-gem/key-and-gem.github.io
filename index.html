@@ -508,7 +508,6 @@ body {
       password = readSavedPw() || newPassword();
       pwEl.textContent = password;
       plate.classList.add("show");
-      if (copied) { flashOk(); }
       plate.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
     }, 2700);
   }
@@ -596,15 +595,16 @@ body {
 
   function tryCopy(manual) {
     if (!password) return;
-    function ok() { copied = true; flashOk(); }
-    function fail() {
-      if (legacyCopy()) { ok(); } else if (manual) { selectShown(); }
-    }
+    function ok() { copied = true; if (manual) { flashOk(); } }
+    // execCommand needs no permission prompt; clipboard API is the fallback
+    if (legacyCopy()) { ok(); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(password).then(ok, fail);
-      return;
+      navigator.clipboard.writeText(password).then(ok, function () {
+        if (manual) { selectShown(); }
+      });
+    } else if (manual) {
+      selectShown();
     }
-    fail();
   }
 
   function armAutoCopy() {
