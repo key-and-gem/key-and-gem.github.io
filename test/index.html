@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mera Browser</title>
+<style>
+  html, body { margin: 0; height: 100%; font-family: Arial, sans-serif; }
+  #top { height: 48px; display: flex; gap: 8px; padding: 8px; box-sizing: border-box; background: #f3d9c4; }
+  #url { flex: 1; padding: 0 12px; font-size: 15px; border: 1px solid #c9a88c; border-radius: 6px; }
+  button { padding: 0 16px; font-size: 15px; cursor: pointer; border: 0; border-radius: 6px; background: #fff; }
+  #view { width: 100%; height: calc(100% - 48px); border: 0; }
+</style>
+</head>
+<body>
+  <form id="top">
+    <input id="url" placeholder="URL ya search likhiye, jaise google.com" autofocus>
+    <button>Go</button>
+  </form>
+  <iframe id="view"></iframe>
+
+<script>
+  const input = document.getElementById("url");
+  const view = document.getElementById("view");
+
+  function normalize(text) {
+    text = text.trim();
+    if (/^https?:\/\//i.test(text)) return text;
+    if (/^[^\s]+\.[^\s]+$/.test(text)) return "https://" + text;
+    return "https://duckduckgo.com/html/?q=" + encodeURIComponent(text); // search
+  }
+
+  document.getElementById("top").onsubmit = (e) => {
+    e.preventDefault();
+    if (!input.value.trim()) return;
+    view.src = "/p?url=" + encodeURIComponent(normalize(input.value));
+  };
+
+  // Page ke andar link dabane par address bar update ho jaye
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.proxyUrl) input.value = e.data.proxyUrl;
+  });
+</script>
+</body>
+</html>
